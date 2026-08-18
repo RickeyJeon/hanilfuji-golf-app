@@ -7,125 +7,24 @@
 <title>가입 승인 관리 | HANIL-FUJI GOLF COMMUNITY</title>
 <style>
 :root{--bg:#f4f7f3;--card:#fff;--text:#17221c;--muted:#6b776f;--line:#dfe7e1;--green:#0d3b2e;--green2:#1e6a4c;--green3:#dcebe2;--danger:#c4473d;--shadow:0 10px 28px rgba(23,54,37,.08)}
-*{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif}body{min-height:100vh}
-.page{max-width:860px;margin:0 auto;padding:22px}.hero{padding:22px 20px;border-radius:24px;background:linear-gradient(145deg,var(--green),#164f3a);color:#fff;box-shadow:var(--shadow);margin-bottom:16px}.hero h1{margin:0 0 7px;font-size:26px}.hero p{margin:0;color:rgba(255,255,255,.82);font-size:14px;line-height:1.6}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;margin-bottom:14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.inputgroup{margin-bottom:12px}.inputgroup label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:0 0 6px 2px}
-input{width:100%;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:12px;padding:12px 13px;font-size:14px;outline:none}
-table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;vertical-align:top}th{font-size:12px;color:var(--muted)}.btn{appearance:none;border:0;border-radius:12px;padding:10px 12px;font-weight:850;font-size:13px;cursor:pointer}.btn.primary{background:var(--green2);color:#fff}.btn.secondary{background:var(--green3);color:var(--green2)}.btn.danger{background:#f9e1e0;color:#a12626}.actions{display:flex;gap:8px;flex-wrap:wrap}
-.notice{margin-top:12px;padding:12px 13px;border-radius:14px;font-size:13px;line-height:1.6}.notice.info{background:#edf4ef;color:#30513f}.notice.error{background:#fdecec;color:#9d2d2d}.notice.success{background:#e7f6ea;color:#23643a}.hidden{display:none}.meta{font-size:12px;color:var(--muted)}
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif}body{min-height:100vh}.page{max-width:900px;margin:0 auto;padding:22px}.hero{padding:22px 20px;border-radius:24px;background:linear-gradient(145deg,var(--green),#164f3a);color:#fff;box-shadow:var(--shadow);margin-bottom:16px}.hero h1{margin:0 0 7px;font-size:26px}.hero p{margin:0;color:rgba(255,255,255,.82);font-size:14px;line-height:1.6}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;margin-bottom:14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.inputgroup{margin-bottom:12px}.inputgroup label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:0 0 6px 2px}input{width:100%;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:12px;padding:12px 13px;font-size:14px;outline:none}table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;vertical-align:top}th{font-size:12px;color:var(--muted)}.btn{appearance:none;border:0;border-radius:12px;padding:10px 12px;font-weight:850;font-size:13px;cursor:pointer}.btn.primary{background:var(--green2);color:#fff}.btn.secondary{background:var(--green3);color:var(--green2)}.btn.danger{background:#f9e1e0;color:#a12626}.btn:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap}.notice{margin-top:12px;padding:12px 13px;border-radius:14px;font-size:13px;line-height:1.6}.notice.info{background:#edf4ef;color:#30513f}.notice.error{background:#fdecec;color:#9d2d2d}.notice.success{background:#e7f6ea;color:#23643a}.hidden{display:none}.meta{font-size:12px;color:var(--muted)}
 </style>
 </head>
-<body>
-  <div class="page">
-    <section class="hero">
-      <h1>가입 승인 관리</h1>
-      <p>관리자만 접근할 수 있습니다. 승인 시 가입 신청 정보는 <code>club_members</code>에 자동 반영됩니다.</p>
-    </section>
-    <section id="loginCard" class="card">
-      <div class="row">
-        <div class="inputgroup"><label for="adminId">관리자 ID</label><input id="adminId" inputmode="tel" placeholder="01035504581 또는 8자리 ID" autocomplete="username" /></div>
-        <div class="inputgroup"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" /></div>
-      </div>
-      <div class="actions">
-        <button id="loginBtn" class="btn primary" type="button">관리자 로그인</button>
-        <a class="btn secondary" href="./index.html" style="text-decoration:none">메인으로 돌아가기</a>
-      </div>
-      <div id="authMessage" class="notice info">승인 관리자는 Supabase Auth 계정이 있어야 합니다.</div>
-    </section>
-    <section id="appCard" class="card hidden">
-      <div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div><strong id="adminName">관리자</strong><div class="meta" id="adminMeta"></div></div>
-        <div class="actions"><button id="refreshBtn" class="btn secondary" type="button">새로고침</button><button id="logoutBtn" class="btn danger" type="button">로그아웃</button></div>
-      </div>
-      <div id="listMessage" class="notice info">승인 대기 목록을 불러오는 중입니다.</div>
-      <div style="overflow:auto">
-        <table>
-          <thead><tr><th>신청자</th><th>연락처</th><th>소속</th><th>메모</th><th>상태</th><th>처리</th></tr></thead>
-          <tbody id="requestRows"></tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-    const supabase = createClient("https://nruqzbxiioxvomjlxfon.supabase.co","sb_publishable_gTo4Zc7LBhFX1F0wAQyeKg_Yr6U24An");
-    const loginCard = document.getElementById("loginCard");
-    const appCard = document.getElementById("appCard");
-    const authMessage = document.getElementById("authMessage");
-    const listMessage = document.getElementById("listMessage");
-    const requestRows = document.getElementById("requestRows");
-    const adminName = document.getElementById("adminName");
-    const adminMeta = document.getElementById("adminMeta");
-    let currentAdmin = null;
-    function setBoxMessage(target, kind, text) { target.className = `notice ${kind}`; target.textContent = text; }
-    async function loadRequests() {
-      setBoxMessage(listMessage, "info", "가입 신청 목록을 불러오는 중입니다.");
-      const { data, error } = await supabase.from("signup_requests").select("*").order("created_at", { ascending: true });
-      if (error) { setBoxMessage(listMessage, "error", error.message); return; }
-      if (!data.length) { requestRows.innerHTML = ""; setBoxMessage(listMessage, "success", "현재 가입 신청이 없습니다."); return; }
-      setBoxMessage(listMessage, "success", `총 ${data.length}건의 가입 신청이 있습니다.`);
-      requestRows.innerHTML = data.map((row) => `
-        <tr>
-          <td><strong>${row.full_name}</strong><div class="meta">${new Date(row.created_at).toLocaleString("ko-KR")}</div></td>
-          <td>${row.phone_e164 || "-"}<br>${row.email || "-"}</td>
-          <td>${row.company_name || "-"}<br>${row.department_name || "-"} ${row.position_title || ""}</td>
-          <td>${row.memo || "-"}</td>
-          <td>${row.status}</td>
-          <td><div class="actions"><button class="btn primary" data-approve="${row.id}" ${row.status !== "pending" ? "disabled" : ""}>승인</button><button class="btn danger" data-reject="${row.id}" ${row.status !== "pending" ? "disabled" : ""}>반려</button></div></td>
-        </tr>
-      `).join("");
-    }
-    async function requireAdminSession() {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const session = sessionData.session;
-      if (!session) { loginCard.classList.remove("hidden"); appCard.classList.add("hidden"); return; }
-      const { data: me, error } = await supabase.from("club_members").select("id, full_name, phone_e164, role, company_name, department_name, auth_user_id").eq("auth_user_id", session.user.id).single();
-      if (error || !me || me.phone_e164 !== "01035504581" || me.role !== "primary_admin") {
-        await supabase.auth.signOut();
-        setBoxMessage(authMessage, "error", "관리자 권한이 없는 계정입니다.");
-        loginCard.classList.remove("hidden");
-        appCard.classList.add("hidden");
-        return;
-      }
-      currentAdmin = me;
-      adminName.textContent = me.full_name;
-      adminMeta.textContent = `${me.role} · ${me.company_name || ""} ${me.department_name || ""}`.trim();
-      loginCard.classList.add("hidden");
-      appCard.classList.remove("hidden");
-      await loadRequests();
-    }
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      const rawId = document.getElementById("adminId").value.trim();
-      const digits = rawId.replace(/\D/g, "");
-      const phone = digits.length === 8 ? `010${digits}` : digits;
-      const password = document.getElementById("password").value;
-      setBoxMessage(authMessage, "info", "로그인 중입니다.");
-      const { data: loginEmail, error: resolveError } = await supabase.rpc("resolve_login_email", { phone_input: phone });
-      if (resolveError || !loginEmail) { setBoxMessage(authMessage, "error", "관리자 ID를 확인해 주세요."); return; }
-      const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
-      if (error) { setBoxMessage(authMessage, "error", error.message); return; }
-      await requireAdminSession();
-    });
-    requestRows.addEventListener("click", async (event) => {
-      const approveId = event.target.getAttribute("data-approve");
-      const rejectId = event.target.getAttribute("data-reject");
-      if (!approveId && !rejectId) return;
-      const requestId = approveId || rejectId;
-      const nextStatus = approveId ? "approved" : "rejected";
-      const { error } = await supabase.from("signup_requests").update({ status: nextStatus, reviewed_by_member_id: currentAdmin.id, reviewed_at: new Date().toISOString() }).eq("id", requestId);
-      if (error) { setBoxMessage(listMessage, "error", error.message); return; }
-      await loadRequests();
-    });
-    document.getElementById("refreshBtn").addEventListener("click", loadRequests);
-    document.getElementById("logoutBtn").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      currentAdmin = null;
-      loginCard.classList.remove("hidden");
-      appCard.classList.add("hidden");
-      setBoxMessage(authMessage, "info", "로그아웃되었습니다.");
-    });
-    await requireAdminSession();
-  </script>
-<script src="./password-visibility.js"></script>
-</body>
-</html>
+<body><div class="page">
+<section class="hero"><h1>가입 승인 관리</h1><p>관리자 전용 화면입니다. 승인하면 회원정보와 회원 계정이 함께 처리됩니다.</p></section>
+<section id="loginCard" class="card"><div class="row"><div class="inputgroup"><label for="adminId">관리자 ID</label><input id="adminId" inputmode="tel" placeholder="휴대폰 번호" autocomplete="username"></div><div class="inputgroup"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password"></div></div><div class="actions"><button id="loginBtn" class="btn primary">관리자 로그인</button><a class="btn secondary" href="./index.html" style="text-decoration:none">메인으로 돌아가기</a></div><div id="authMessage" class="notice info">관리자 계정으로 로그인해 주세요.</div></section>
+<section id="appCard" class="card hidden"><div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:10px"><div><strong id="adminName">관리자</strong><div class="meta" id="adminMeta"></div></div><div class="actions"><button id="refreshBtn" class="btn secondary">새로고침</button><button id="logoutBtn" class="btn danger">로그아웃</button></div></div><div id="listMessage" class="notice info">목록을 불러오는 중입니다.</div><div style="overflow:auto"><table><thead><tr><th>신청자</th><th>연락처</th><th>소속</th><th>메모</th><th>상태</th><th>처리</th></tr></thead><tbody id="requestRows"></tbody></table></div></section>
+</div>
+<script type="module">
+import {createClient} from "https://esm.sh/@supabase/supabase-js@2";
+const supabase=createClient("https://nruqzbxiioxvomjlxfon.supabase.co","sb_publishable_gTo4Zc7LBhFX1F0wAQyeKg_Yr6U24An");
+const $=id=>document.getElementById(id);let currentAdmin=null;
+function box(el,kind,text){el.className=`notice ${kind}`;el.textContent=text}
+async function getAdmin(){const {data:{session}}=await supabase.auth.getSession();if(!session)return null;const {data:me}=await supabase.from("club_members").select("id,full_name,phone_e164,role,status,company_name,department_name,auth_user_id").eq("auth_user_id",session.user.id).maybeSingle();if(!me||me.status!=="active"||!["primary_admin","admin"].includes(me.role))return null;return me}
+async function loadRequests(){box($("listMessage"),"info","가입 신청 목록을 불러오는 중입니다.");const {data,error}=await supabase.from("signup_requests").select("*").order("created_at",{ascending:true});if(error){box($("listMessage"),"error",error.message);return}if(!data?.length){$("requestRows").innerHTML="";box($("listMessage"),"success","현재 가입 신청이 없습니다.");return}$("requestRows").innerHTML=data.map(r=>`<tr><td><strong>${r.full_name||"-"}</strong><div class="meta">${new Date(r.created_at).toLocaleString("ko-KR")}</div></td><td>${r.phone_e164||"-"}</td><td>${r.company_name||"-"}<br>${r.department_name||"-"} ${r.position_title||""}</td><td>${r.memo||"-"}</td><td>${r.status}</td><td><div class="actions"><button class="btn primary" data-approve="${r.id}" ${r.status!=="pending"?"disabled":""}>승인</button><button class="btn danger" data-reject="${r.id}" ${r.status!=="pending"?"disabled":""}>반려</button></div></td></tr>`).join("");box($("listMessage"),"success",`총 ${data.length}건의 가입 신청이 있습니다.`)}
+async function showApp(me){currentAdmin=me;$("adminName").textContent=me.full_name;$("adminMeta").textContent=`${me.role} · ${me.company_name||""} ${me.department_name||""}`.trim();$("loginCard").classList.add("hidden");$("appCard").classList.remove("hidden");await loadRequests()}
+async function requireAdmin(){const me=await getAdmin();if(!me){await supabase.auth.signOut();$("loginCard").classList.remove("hidden");$("appCard").classList.add("hidden");return false}await showApp(me);return true}
+$("loginBtn").onclick=async()=>{const raw=$("adminId").value.trim();const digits=raw.replace(/\D/g,"");const phone=digits.length===8?`010${digits}`:digits;const password=$("password").value;box($("authMessage"),"info","로그인 중입니다.");const {data:email,error:resolveError}=await supabase.rpc("resolve_login_email",{phone_input:phone});if(resolveError||!email){box($("authMessage"),"error","관리자 ID를 확인해 주세요.");return}const {error}=await supabase.auth.signInWithPassword({email,password});if(error){box($("authMessage"),"error",error.message);return}if(!(await requireAdmin()))box($("authMessage"),"error","관리자 권한이 없는 계정입니다.")};
+$("requestRows").onclick=async e=>{const approve=e.target.closest("[data-approve]")?.dataset.approve;const reject=e.target.closest("[data-reject]")?.dataset.reject;if(!approve&&!reject)return;const id=approve||reject;const button=e.target.closest("button");button.disabled=true;box($("listMessage"),"info",approve?"승인 처리 중입니다. 회원정보와 계정을 함께 처리합니다.":"반려 처리 중입니다.");let result,error;if(approve){({data:result,error}=await supabase.rpc("admin_approve_signup_request",{p_request_id:id,p_admin_member_id:currentAdmin.id}));}else{({data:result,error}=await supabase.rpc("admin_reject_signup_request",{p_request_id:id,p_admin_member_id:currentAdmin.id}));}if(error){box($("listMessage"),"error",`처리 실패: ${error.message}`);button.disabled=false;return}if(!result?.ok){box($("listMessage"),"error","처리가 완료되지 않았습니다.");button.disabled=false;return}box($("listMessage"),"success",approve?`승인이 완료되었습니다. ${result.full_name||"회원"}님의 회원정보가 등록되었습니다.`:"반려가 완료되었습니다.");await loadRequests();};
+$("refreshBtn").onclick=loadRequests;$("logoutBtn").onclick=async()=>{await supabase.auth.signOut();currentAdmin=null;$("loginCard").classList.remove("hidden");$("appCard").classList.add("hidden");box($("authMessage"),"info","로그아웃되었습니다.")};await requireAdmin();
+</script></body></html>
