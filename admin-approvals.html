@@ -79,8 +79,8 @@ table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData.session;
       if (!session) { loginCard.classList.remove("hidden"); appCard.classList.add("hidden"); return; }
-      const { data: me, error } = await supabase.from("club_members").select("id, full_name, role, company_name, department_name, auth_user_id").eq("auth_user_id", session.user.id).single();
-      if (error || !me || !["assistant_admin", "primary_admin"].includes(me.role)) {
+      const { data: me, error } = await supabase.from("club_members").select("id, full_name, phone_e164, role, company_name, department_name, auth_user_id").eq("auth_user_id", session.user.id).single();
+      if (error || !me || me.phone_e164 !== "01035504581" || me.role !== "primary_admin") {
         await supabase.auth.signOut();
         setBoxMessage(authMessage, "error", "관리자 권한이 없는 계정입니다.");
         loginCard.classList.remove("hidden");
