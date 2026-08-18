@@ -828,12 +828,18 @@ async function login(){
   const id=normalizePhone(loginId.value),pw=loginPw.value;
   if(!id||!pw){alert('휴대폰 번호와 비밀번호를 입력해 주세요.');return}
   // Authenticate first. RLS intentionally blocks anonymous reads from club_members.
-  let authResult=await hfSupabase.auth.signInWithPassword({phone:id,password:pw});
-  if(authResult.error&&id==='01035504581')authResult=await hfSupabase.auth.signInWithPassword({email:'master@hanilfuji.local',password:pw});
+  let authResult=id.includes('@')
+    ?await hfSupabase.auth.signInWithPassword({email:id,password:pw})
+    :await hfSupabase.auth.signInWithPassword({phone:id,password:pw});
+  if(authResult.error&&!id.includes('@')){
+    const {data:loginEmail}=await hfSupabase.rpc('resolve_login_email',{phone_input:id});
+    if(loginEmail)authResult=await hfSupabase.auth.signInWithPassword({email:loginEmail,password:pw});
+  }
   if(authResult.error){alert('휴대폰 번호 또는 비밀번호가 올바르지 않습니다.');return}
   const {data:member,error:memberError}=await hfSupabase.from('club_members').select('id,full_name,email,phone_e164,company_name,department_name,position_title,role,status,must_change_password').eq('auth_user_id',authResult.data.user.id).maybeSingle();
   if(memberError||!member||member.status==='inactive'){await hfSupabase.auth.signOut();alert('승인된 회원 계정이 아닙니다. 관리자 승인을 확인해 주세요.');return}
-  currentUser={id:member.id,name:member.full_name,phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
+  const {data:memberSettings}=await hfSupabase.from('member_settings').select('nickname').eq('member_id',member.id).maybeSingle();
+  currentUser={id:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
   await enterApp();
