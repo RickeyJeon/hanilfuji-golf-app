@@ -1,0 +1,3 @@
+배포/운영 : VERCEL
+
+DB : SUPABASE
