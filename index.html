@@ -825,14 +825,16 @@ function openModal(html){modal.classList.remove('hidden');sheet.innerHTML=`<div 
 // Supabase Auth is the source of truth for sign-in and approval actions.
 function isMasterAdmin(){return normalizePhone(currentUser?.phone)==='01035504581'&&currentUser?.role==='PRIMARY_ADMIN'}
 function isAdmin(){return isMasterAdmin()}
+function normalizeLoginPhone(value){const digits=normalizePhone(value);return digits.length===8?`010${digits}`:digits}
 async function login(){
-  const id=normalizePhone(loginId.value),pw=loginPw.value;
+  const rawId=loginId.value.trim(),isEmail=rawId.includes('@');
+  const id=isEmail?rawId.toLowerCase():normalizeLoginPhone(rawId),pw=loginPw.value;
   if(!id||!pw){alert('휴대폰 번호와 비밀번호를 입력해 주세요.');return}
   // Authenticate first. RLS intentionally blocks anonymous reads from club_members.
-  let authResult=id.includes('@')
+  let authResult=isEmail
     ?await hfSupabase.auth.signInWithPassword({email:id,password:pw})
     :await hfSupabase.auth.signInWithPassword({phone:id,password:pw});
-  if(authResult.error&&!id.includes('@')){
+  if(authResult.error&&!isEmail){
     const {data:loginEmail}=await hfSupabase.rpc('resolve_login_email',{phone_input:id});
     if(loginEmail)authResult=await hfSupabase.auth.signInWithPassword({email:loginEmail,password:pw});
   }
