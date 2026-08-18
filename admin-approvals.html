@@ -23,7 +23,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:
     </section>
     <section id="loginCard" class="card">
       <div class="row">
-        <div class="inputgroup"><label for="email">관리자 이메일</label><input id="email" type="email" autocomplete="email" /></div>
+        <div class="inputgroup"><label for="adminId">관리자 ID</label><input id="adminId" inputmode="tel" placeholder="01035504581 또는 8자리 ID" autocomplete="username" /></div>
         <div class="inputgroup"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" /></div>
       </div>
       <div class="actions">
@@ -95,10 +95,14 @@ table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:
       await loadRequests();
     }
     document.getElementById("loginBtn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value.trim();
+      const rawId = document.getElementById("adminId").value.trim();
+      const digits = rawId.replace(/\D/g, "");
+      const phone = digits.length === 8 ? `010${digits}` : digits;
       const password = document.getElementById("password").value;
       setBoxMessage(authMessage, "info", "로그인 중입니다.");
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: loginEmail, error: resolveError } = await supabase.rpc("resolve_login_email", { phone_input: phone });
+      if (resolveError || !loginEmail) { setBoxMessage(authMessage, "error", "관리자 ID를 확인해 주세요."); return; }
+      const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
       if (error) { setBoxMessage(authMessage, "error", error.message); return; }
       await requireAdminSession();
     });

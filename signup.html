@@ -27,8 +27,7 @@ input,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var
         <div class="inputgroup"><label for="phone">휴대폰 번호</label><input id="phone" inputmode="tel" placeholder="01012345678" /></div>
       </div>
       <div class="row">
-        <div class="inputgroup"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" /></div>
-        <div class="inputgroup"><label for="company">회사명</label><input id="company" value="HANIL-FUJI / FUJI GLOBAL" /></div>
+        <div class="inputgroup"><label for="company">회사명</label><select id="company"><option value="한일후지코리아(주)">한일후지코리아(주)</option><option value="(주)후지글로벌로지스틱">(주)후지글로벌로지스틱</option></select></div>
       </div>
       <div class="row">
         <div class="inputgroup"><label for="department">부서</label><input id="department" /></div>
@@ -48,7 +47,6 @@ input,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var
     const supabase = createClient("https://nruqzbxiioxvomjlxfon.supabase.co","sb_publishable_gTo4Zc7LBhFX1F0wAQyeKg_Yr6U24An");
     const fullName = document.getElementById("fullName");
     const phone = document.getElementById("phone");
-    const email = document.getElementById("email");
     const company = document.getElementById("company");
     const department = document.getElementById("department");
     const position = document.getElementById("position");
@@ -61,20 +59,19 @@ input,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var
       const payload = {
         full_name: fullName.value.trim(),
         phone_e164: normalizePhone(phone.value),
-        email: email.value.trim().toLowerCase() || null,
-        company_name: company.value.trim() || "HANIL-FUJI / FUJI GLOBAL",
+        company_name: company.value,
         department_name: department.value.trim() || null,
         position_title: position.value.trim() || null,
         memo: memo.value.trim() || null
       };
       if (payload.full_name.length < 2) { setMessage("error", "이름은 2글자 이상 입력해 주세요."); return; }
-      if (!payload.email && !payload.phone_e164) { setMessage("error", "이메일 또는 휴대폰 번호 중 하나는 반드시 입력해 주세요."); return; }
+      if (payload.phone_e164.length < 10) { setMessage("error", "휴대폰 번호를 정확히 입력해 주세요."); return; }
       submitBtn.disabled = true;
       setMessage("info", "가입 신청을 전송하고 있습니다.");
       const { error } = await supabase.from("signup_requests").insert(payload);
       submitBtn.disabled = false;
       if (error) { setMessage("error", `신청에 실패했습니다: ${error.message}`); return; }
-      fullName.value = ""; phone.value = ""; email.value = ""; department.value = ""; position.value = ""; memo.value = "";
+      fullName.value = ""; phone.value = ""; department.value = ""; position.value = ""; memo.value = "";
       setMessage("success", "가입 신청이 접수되었습니다. 관리자 승인 후 회원 정보가 자동 등록됩니다.");
     });
   </script>
