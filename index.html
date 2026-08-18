@@ -157,7 +157,7 @@ function icon(name){
 const members=[
 ['지용훈','01035839943','재무관리사업부','전무',''],['이재훈','01036574953','재무관리사업부','부장',''],['김도현','01087509179','재무관리사업부','과장','아!!도프로치'],['신동욱','01087908487','재무관리사업부','주임',''],['이경태','01087908790','미래전략부','상무',''],['김명덕','01032047908','에너지 사업부','차장',''],['이재철','01056204587','부품사업부','부장',''],['박효지','01044005403','부품사업부','차장',''],['박정호','01093207594','부품사업부','과장',''],['한경훈','01030682686','부품사업부','주임',''],['김성수','01094028552','엔진사업부','부장',''],['권해석','01026432090','엔진사업부','차장',''],['이재환','01092331737','선용사업부','부장',''],['박원식','01035008079','국내사업부','부장',''],['윤지용','01075226872','국내사업부','과장',''],['이동립','01039246262','국내사업부','과장',''],['하창진','01024427571','국내사업부','과장',''],['최우진','01085120340','F&B사업부','과장','후지최회장'],['신민서','01098971123','F&B사업부','주임',''],['박문성','01076361648','F&B사업부','사원',''],['전재현','01035504581','마린국제사업부','대리','후지전총무'],['최성묵','01067691175','마린물류사업부','차장',''],['송기한','01043436701','선용물류사업부','대리',''],['김남훈','01091678759','마린국제사업부','이사',''],['윤수지','01051310799','마린국제사업부','과장',''],['정원우','01075785393','마린국제사업부','이사','']
 ].map((m,i)=>({id:i+1,name:m[0],phone:m[1],dept:m[2],position:m[3],nick:m[4],company:i<20?'한일후지코리아(주)':'(주)후지글로벌로지스틱',role:m[0]==='전재현'?'PRIMARY_ADMIN':'USER',status:'ACTIVE'}));
-let currentUser=null, currentPage='home', recordType='SCREEN', rankingMode='ANNUAL', rankingMonth=8, rankingYear=new Date().getFullYear(), averageType='SCREEN', eventMode='NOTICE', groupEventId=null;
+let currentUser=null, currentPage='home', recordType='SCREEN', rankingMode='ANNUAL', rankingMonth=8, rankingYear=new Date().getFullYear(), averageType='SCREEN', eventMode='NOTICE', groupEventId=null, dbScoreEvents=null;
 function nameOf(m){return m.name+(m.nick?` [${m.nick}]`:'')}
 function normalizePhone(s){return (s||'').replace(/\D/g,'')}
 function login(){const id=normalizePhone(loginId.value), pw=loginPw.value;const m=members.find(x=>x.phone===id);if(!m||m.status==='INACTIVE'||pw!==(localStorage.getItem('pw_'+id)||id.slice(-8))){alert('휴대폰 번호 또는 비밀번호가 올바르지 않습니다.');return}currentUser=m;if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');enterApp()}
@@ -825,6 +825,44 @@ function openModal(html){modal.classList.remove('hidden');sheet.innerHTML=`<div 
 // Supabase Auth is the source of truth for sign-in and approval actions.
 function isMasterAdmin(){return normalizePhone(currentUser?.phone)==='01035504581'&&currentUser?.role==='PRIMARY_ADMIN'}
 function isAdmin(){return isMasterAdmin()}
+async function loadSupabaseScoreEvents(){
+  if(!hfSupabase||!currentUser)return;
+  const [{data:events},{data:scores},{data:directory}]=await Promise.all([
+    hfSupabase.from('club_events').select('id,legacy_key,title,event_type,starts_at,venue_name,course_name,event_status'),
+    hfSupabase.from('event_scorecards').select('event_id,member_id,gross_score,handicap_adjustment,rank_position,points_awarded'),
+    hfSupabase.from('member_score_directory').select('id,phone_e164')
+  ]);
+  if(!events?.length||!scores?.length||!directory?.length)return;
+  const legacyByDbId=new Map(directory.map((item)=>[item.id,members.find((member)=>member.phone===item.phone_e164)?.id]).filter(([,id])=>id!==undefined));
+  const next={};
+  events.forEach((event)=>{
+    const rows=scores.filter((score)=>score.event_id===event.id).map((score)=>({memberId:legacyByDbId.get(score.member_id),grossScore:score.gross_score,score:score.gross_score,handicap:+score.handicap_adjustment||0,adjusted:score.gross_score+(+score.handicap_adjustment||0),rank:score.rank_position||0,total:score.points_awarded||0})).filter((row)=>row.memberId!==undefined);
+    if(!rows.length)return;
+    const date=event.starts_at?.slice(0,10)||new Date().toISOString().slice(0,10);
+    next[event.legacy_key||event.id]={year:+date.slice(0,4),month:+date.slice(5,7),type:event.event_type==='field'?'FIELD':'SCREEN',status:event.event_status==='completed'?'CONFIRMED':'DRAFT',eventDate:date,title:event.title,location:event.venue_name||'',courseName:event.course_name||'',results:rows};
+  });
+  if(Object.keys(next).length)dbScoreEvents=next;
+}
+async function syncLegacyDataToSupabase(){
+  if(!isMasterAdmin())return;
+  const profileRows=members.map((item)=>item.phone==='01035504581'
+    ?{full_name:currentUser.name,phone_e164:item.phone,email:currentUser.email||null,company_name:currentUser.company||'HANIL-FUJI / FUJI GLOBAL',department_name:currentUser.dept||null,position_title:currentUser.position||null,role:'primary_admin',status:'active'}
+    :{full_name:item.name||'회원',phone_e164:item.phone,company_name:item.company||'HANIL-FUJI / FUJI GLOBAL',department_name:item.dept||null,position_title:item.position||null,role:item.role==='PRIMARY_ADMIN'?'primary_admin':'member',status:item.status==='PAUSED'?'paused':item.status==='INACTIVE'?'inactive':'active'});
+  const {data:dbMembers}=await hfSupabase.from('club_members').upsert(profileRows,{onConflict:'phone_e164'}).select('id,phone_e164');
+  if(!dbMembers?.length)return;
+  const byPhone=new Map(dbMembers.map((item)=>[item.phone_e164,item.id]));
+  const settings=members.map((item)=>({member_id:byPhone.get(item.phone),nickname:item.nick||null})).filter((item)=>item.member_id);
+  if(settings.length)await hfSupabase.from('member_settings').upsert(settings,{onConflict:'member_id'});
+  const legacyEvents=Object.entries(getScoreEvents()).filter(([,event])=>event.status==='CONFIRMED');
+  for(const [legacyKey,event] of legacyEvents){
+    const startsAt=`${event.eventDate||`${event.year}-${String(event.month).padStart(2,'0')}-01`}T12:00:00+09:00`;
+    const {data:dbEvent}=await hfSupabase.from('club_events').upsert({legacy_key:legacyKey,title:event.title||`${event.year}-${event.month} score`,event_type:event.type==='FIELD'?'field':'screen',event_status:'completed',venue_name:event.location||null,course_name:event.courseName||null,starts_at:startsAt,published:true,created_by_member_id:currentUser.dbId},{onConflict:'legacy_key'}).select('id').single();
+    if(!dbEvent?.id)continue;
+    const cards=(event.results||[]).map((row)=>{const member=members.find((item)=>item.id===row.memberId);return member&&byPhone.get(member.phone)?{event_id:dbEvent.id,member_id:byPhone.get(member.phone),gross_score:+(row.grossScore??row.score),handicap_adjustment:+(row.handicap||0),rank_position:+(row.rank||0),points_awarded:+(row.total||0),created_by_member_id:currentUser.dbId}:null}).filter(Boolean);
+    if(cards.length)await hfSupabase.from('event_scorecards').upsert(cards,{onConflict:'event_id,member_id'});
+  }
+  await loadSupabaseScoreEvents();
+}
 function normalizeLoginPhone(value){const digits=normalizePhone(value);return digits.length===8?`010${digits}`:digits}
 async function login(){
   const rawId=loginId.value.trim(),isEmail=rawId.includes('@');
@@ -842,7 +880,10 @@ async function login(){
   const {data:member,error:memberError}=await hfSupabase.from('club_members').select('id,full_name,email,phone_e164,company_name,department_name,position_title,role,status,must_change_password').eq('auth_user_id',authResult.data.user.id).maybeSingle();
   if(memberError||!member||member.status==='inactive'){await hfSupabase.auth.signOut();alert('승인된 회원 계정이 아닙니다. 관리자 승인을 확인해 주세요.');return}
   const {data:memberSettings}=await hfSupabase.from('member_settings').select('nickname').eq('member_id',member.id).maybeSingle();
-  currentUser={id:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
+  const legacyMember=members.find((item)=>item.phone===member.phone_e164);
+  currentUser={id:legacyMember?.id||member.id,dbId:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
+  await loadSupabaseScoreEvents();
+  if(isMasterAdmin())await syncLegacyDataToSupabase();
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
   await enterApp();
@@ -869,7 +910,7 @@ async function saveRequiredPassword(){
   if(next!==confirmValue){alert('새 비밀번호가 일치하지 않습니다.');return}
   const {error:authError}=await hfSupabase.auth.updateUser({password:next});
   if(authError){alert(authError.message);return}
-  const {error:dbError}=await hfSupabase.from('club_members').update({must_change_password:false}).eq('id',currentUser.id);
+  const {error:dbError}=await hfSupabase.from('club_members').update({must_change_password:false}).eq('id',currentUser.dbId||currentUser.id);
   if(dbError){alert(dbError.message);return}
   closeModal();alert('새 비밀번호가 저장되었습니다. 다음 로그인부터 새 비밀번호를 사용하세요.');
 }
