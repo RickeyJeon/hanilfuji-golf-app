@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>기존 회원 로그인 초기 세팅</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;background:#f4f7f3;color:#17221c;padding:24px}.card{max-width:620px;margin:auto;background:#fff;padding:22px;border-radius:18px;box-shadow:0 10px 28px rgba(23,54,37,.08)}button{border:0;border-radius:12px;padding:13px 16px;background:#1e6a4c;color:#fff;font-weight:800;cursor:pointer}button:disabled{opacity:.5}.notice{margin-top:14px;padding:12px;border-radius:12px;background:#edf4ef;line-height:1.6}.error{background:#fdecec;color:#9d2d2d}.ok{background:#e7f6ea;color:#23643a}code{background:#eef3ef;padding:2px 5px;border-radius:5px}</style></head>
+<body><div class="card"><h1>기존 회원 로그인 초기 세팅</h1><p>관리자 전용입니다. 기존 <code>club_members</code>의 활성 회원 중 Auth 계정이 없는 회원만 처리합니다.</p><ul><li>기존 회원정보 삭제/재가입 없음</li><li>ID = 기존 휴대폰번호</li><li>초기 비밀번호 = 휴대폰번호 뒤 8자리</li><li>첫 로그인 후 비밀번호 변경 필요</li></ul><button id="run">기존 회원 계정 초기 세팅 실행</button><div id="msg" class="notice">관리자 세션을 확인하는 중입니다.</div></div>
+<script type="module">
+import {createClient} from "https://esm.sh/@supabase/supabase-js@2";
+const supabase=createClient("https://nruqzbxiioxvomjlxfon.supabase.co","sb_publishable_gTo4Zc7LBhFX1F0wAQyeKg_Yr6U24An");
+const run=document.getElementById("run"),msg=document.getElementById("msg");
+function show(text,cls="notice"){msg.className=cls;msg.textContent=text}
+async function check(){
+ const {data:{session}}=await supabase.auth.getSession();
+ if(!session){run.disabled=true;show("관리자 로그인 후 이 페이지를 열어주세요.","notice error");return false}
+ const {data:me,error}=await supabase.from("club_members").select("full_name,role,status").eq("auth_user_id",session.user.id).maybeSingle();
+ if(error||!me||me.status!=="active"||!["primary_admin","admin"].includes(me.role)){run.disabled=true;show("관리자 권한이 없습니다.","notice error");return false}
+ show(`${me.full_name} 관리자 세션 확인 완료. 실행할 수 있습니다.`);return true;
+}
+run.addEventListener("click",async()=>{
+ run.disabled=true;show("기존 활성 회원 계정을 안전하게 초기 세팅하는 중입니다...");
+ const {data:{session}}=await supabase.auth.getSession();
+ if(!session){show("관리자 세션이 없습니다.","notice error");return}
+ const {data,error}=await supabase.functions.invoke("seed-member-auth",{body:{}});
+ if(error){show(`초기 세팅 실패: ${error.message}`,"notice error");run.disabled=false;return}
+ show(`완료: 신규 Auth 계정 ${data.created}개 생성, ${data.linked}명 연결, 실패 ${data.failed}명. 기존 Auth 계정은 ${data.alreadyExistingAuth}개 건너뛰었습니다.`,"notice ok");
+ run.disabled=true;
+});
+await check();
+</script></body></html>
