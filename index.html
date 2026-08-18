@@ -872,7 +872,9 @@ async function saveRequiredPassword(){
   closeModal();alert('새 비밀번호가 저장되었습니다. 다음 로그인부터 새 비밀번호를 사용하세요.');
 }
 function toggleTheme(){let d=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=d?'':'dark';localStorage.setItem('theme',d?'light':'dark')}
+function setupPasswordVisibility(){document.querySelectorAll('input[type="password"]').forEach(input=>{if(input.dataset.visibilityReady)return;input.dataset.visibilityReady='1';const button=document.createElement('button');button.type='button';button.textContent='◉';button.setAttribute('aria-label','비밀번호 표시');button.style.cssText='position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:16px;padding:7px;cursor:pointer';const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:block';input.parentNode.insertBefore(wrap,input);wrap.appendChild(input);wrap.appendChild(button);button.onclick=()=>{const visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'◉':'◎';button.setAttribute('aria-label',visible?'비밀번호 표시':'비밀번호 숨기기')}})}
 (function init(){seedV19BackupIfNeeded();restoreMembers();if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';let saved=localStorage.getItem('savedId');if(saved){loginId.value=saved;rememberId.checked=true}let au=localStorage.getItem('autoUser');if(au){let m=members.find(x=>x.phone===au&&x.status!=='INACTIVE');if(m){currentUser=m;enterApp()}}autoLogin.addEventListener('change',()=>{if(autoLogin.checked)rememberId.checked=true})})();
+setupPasswordVisibility();
 </script>
 </body>
 </html>
