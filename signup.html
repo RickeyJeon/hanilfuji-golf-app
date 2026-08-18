@@ -10,7 +10,7 @@
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif}body{min-height:100vh}
 .page{max-width:560px;margin:0 auto;padding:22px}.hero{padding:24px 20px;border-radius:24px;background:linear-gradient(145deg,var(--green),#164f3a);color:#fff;box-shadow:var(--shadow);margin-bottom:16px}.hero h1{margin:0 0 8px;font-size:28px;line-height:1.15}.hero p{margin:0;color:rgba(255,255,255,.82);font-size:14px;line-height:1.6}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.inputgroup{margin-bottom:12px}.inputgroup label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:0 0 6px 2px}
-input,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:12px;padding:12px 13px;font-size:14px;outline:none}textarea{min-height:96px;resize:vertical}input:focus,textarea:focus{border-color:var(--green2);box-shadow:0 0 0 3px rgba(30,106,76,.12)}
+input,textarea,select{width:100%;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:12px;padding:12px 13px;font-size:14px;outline:none}textarea{min-height:96px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:var(--green2);box-shadow:0 0 0 3px rgba(30,106,76,.12)}
 .btn{appearance:none;border:0;border-radius:13px;padding:13px 15px;font-weight:850;font-size:14px;cursor:pointer}.btn.primary{background:var(--green2);color:#fff}.btn.secondary{background:var(--green3);color:var(--green2)}.actions{display:flex;gap:10px;margin-top:8px}.actions .btn,.actions a{flex:1;text-align:center;text-decoration:none}
 .notice{margin-top:14px;padding:12px 13px;border-radius:14px;font-size:13px;line-height:1.6}.notice.info{background:#edf4ef;color:#30513f}.notice.success{background:#e7f6ea;color:#23643a}.notice.error{background:#fdecec;color:#9d2d2d}.small{font-size:12px;color:var(--muted);line-height:1.6}
 </style>
@@ -27,11 +27,14 @@ input,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var
         <div class="inputgroup"><label for="phone">휴대폰 번호</label><input id="phone" inputmode="tel" placeholder="01012345678" /></div>
       </div>
       <div class="row">
-        <div class="inputgroup"><label for="company">회사명</label><select id="company"><option value="한일후지코리아(주)">한일후지코리아(주)</option><option value="(주)후지글로벌로지스틱">(주)후지글로벌로지스틱</option></select></div>
+        <div class="inputgroup"><label for="company">회사명</label><select id="company">
+          <option value="한일후지코리아(주)">한일후지코리아</option>
+          <option value="(주)후지글로벌로지스틱">후지글로벌로지스틱</option>
+        </select></div>
+        <div class="inputgroup"><label for="department">부서</label><select id="department"></select></div>
       </div>
       <div class="row">
-        <div class="inputgroup"><label for="department">부서</label><input id="department" /></div>
-        <div class="inputgroup"><label for="position">직급</label><input id="position" /></div>
+        <div class="inputgroup"><label for="position">직급</label><select id="position"></select></div>
       </div>
       <div class="inputgroup"><label for="memo">메모</label><textarea id="memo" placeholder="소개, 추천인, 가입 사유 등을 적어주세요."></textarea></div>
       <div class="small">이메일 또는 휴대폰 번호 중 하나는 반드시 필요합니다. 중복된 대기 신청이 있으면 새 신청은 차단됩니다.</div>
@@ -53,25 +56,92 @@ input,textarea{width:100%;border:1px solid var(--line);background:#fff;color:var
     const memo = document.getElementById("memo");
     const message = document.getElementById("message");
     const submitBtn = document.getElementById("submitBtn");
-    function setMessage(kind, text) { message.className = `notice ${kind}`; message.textContent = text; }
-    function normalizePhone(value) { return (value || "").replace(/\D/g, ""); }
+
+    const departmentOptions = {
+      "한일후지코리아(주)": [
+        "F&B사업본부",
+        "선박서비스사업부",
+        "국내사업부",
+        "미래전략부",
+        "엔진부품사업부",
+        "경영진",
+        "재무관리사업부",
+        "전산기획부",
+        "경영기획부",
+        "부품사업부",
+        "선용사업부"
+      ],
+      "(주)후지글로벌로지스틱": [
+        "세관팀",
+        "재무팀",
+        "전산팀",
+        "F&B물류사업부",
+        "시설지원부",
+        "글로벌물류영업부",
+        "인사총무팀",
+        "기부속 물류사업부",
+        "선용물류사업부",
+        "선박서비스사업부"
+      ]
+    };
+
+    const positionOptions = [
+      "사원",
+      "주임",
+      "대리",
+      "과장",
+      "차장",
+      "부장",
+      "이사",
+      "전무",
+      "상무"
+    ];
+
+    function setMessage(kind, text) {
+      message.className = `notice ${kind}`;
+      message.textContent = text;
+    }
+
+    function normalizePhone(value) {
+      return (value || "").replace(/\D/g, "");
+    }
+
+    function renderDepartments() {
+      const options = departmentOptions[company.value] || [];
+      department.innerHTML = '<option value="">부서를 선택해 주세요</option>' +
+        options.map(value => `<option value="${value}">${value}</option>`).join("");
+    }
+
+    function renderPositions() {
+      position.innerHTML = '<option value="">직급을 선택해 주세요</option>' +
+        positionOptions.map(value => `<option value="${value}">${value}</option>`).join("");
+    }
+
+    company.addEventListener("change", renderDepartments);
+    renderDepartments();
+    renderPositions();
+
     submitBtn.addEventListener("click", async () => {
       const payload = {
         full_name: fullName.value.trim(),
         phone_e164: normalizePhone(phone.value),
         company_name: company.value,
-        department_name: department.value.trim() || null,
-        position_title: position.value.trim() || null,
+        department_name: department.value || null,
+        position_title: position.value || null,
         memo: memo.value.trim() || null
       };
       if (payload.full_name.length < 2) { setMessage("error", "이름은 2글자 이상 입력해 주세요."); return; }
       if (payload.phone_e164.length < 10) { setMessage("error", "휴대폰 번호를 정확히 입력해 주세요."); return; }
+      if (!payload.department_name) { setMessage("error", "부서를 선택해 주세요."); return; }
+      if (!payload.position_title) { setMessage("error", "직급을 선택해 주세요."); return; }
       submitBtn.disabled = true;
       setMessage("info", "가입 신청을 전송하고 있습니다.");
       const { error } = await supabase.from("signup_requests").insert(payload);
       submitBtn.disabled = false;
       if (error) { setMessage("error", `신청에 실패했습니다: ${error.message}`); return; }
-      fullName.value = ""; phone.value = ""; department.value = ""; position.value = ""; memo.value = "";
+      fullName.value = ""; phone.value = ""; memo.value = "";
+      renderDepartments();
+      renderPositions();
       setMessage("success", "가입 신청이 접수되었습니다. 관리자 승인 후 회원 정보가 자동 등록됩니다.");
     });
   </script>
