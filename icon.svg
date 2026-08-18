@@ -1,9 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0d3b2e"/><stop offset="1" stop-color="#2e8b66"/></linearGradient></defs>
-  <rect width="192" height="192" rx="48" fill="url(#bg)"/>
-  <path d="M48 151V43h7l67 80V43h22v108h-8L70 72v79Z" fill="#f5efe0" opacity=".96"/>
-  <path d="M48 151V43h7l67 80V43h22" fill="none" stroke="#d5b66b" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="151" cy="39" r="13" fill="#d5b66b"/>
-  <path d="M151 52v28" stroke="#f5efe0" stroke-width="5" stroke-linecap="round"/>
-  <path d="M151 78c18-3 24 4 30 8-11 3-20 2-30-1Z" fill="#d5b66b"/>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fbfcfb"/><stop offset="1" stop-color="#eef3ed"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#86bf5b"/><stop offset="1" stop-color="#5c9f43"/></linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="48" fill="url(#sky)"/>
+  <ellipse cx="97" cy="150" rx="78" ry="31" fill="url(#green)"/>
+  <path d="M34 151c30-20 77-34 137-20-31-3-73 5-110 27Z" fill="#4e8f3c" opacity=".7"/>
+  <ellipse cx="67" cy="151" rx="25" ry="10" fill="#263238"/>
+  <path d="M66 150V43" stroke="#f5a623" stroke-width="8" stroke-linecap="round"/>
+  <path d="M68 43c24-2 44 5 67 16-22 14-45 20-67 14Z" fill="#d92d4b"/>
+  <circle cx="124" cy="133" r="17" fill="#fff" stroke="#d5ddd4" stroke-width="2"/>
+  <g fill="#cfd8d0"><circle cx="117" cy="127" r="2"/><circle cx="126" cy="125" r="2"/><circle cx="133" cy="132" r="2"/><circle cx="120" cy="136" r="2"/><circle cx="130" cy="141" r="2"/></g>
 </svg>
