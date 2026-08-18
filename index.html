@@ -831,12 +831,13 @@ async function login(){
   let authResult=await hfSupabase.auth.signInWithPassword({phone:id,password:pw});
   if(authResult.error&&id==='01035504581')authResult=await hfSupabase.auth.signInWithPassword({email:'master@hanilfuji.local',password:pw});
   if(authResult.error){alert('휴대폰 번호 또는 비밀번호가 올바르지 않습니다.');return}
-  const {data:member,error:memberError}=await hfSupabase.from('club_members').select('id,full_name,email,phone_e164,company_name,department_name,position_title,role,status').eq('auth_user_id',authResult.data.user.id).maybeSingle();
+  const {data:member,error:memberError}=await hfSupabase.from('club_members').select('id,full_name,email,phone_e164,company_name,department_name,position_title,role,status,must_change_password').eq('auth_user_id',authResult.data.user.id).maybeSingle();
   if(memberError||!member||member.status==='inactive'){await hfSupabase.auth.signOut();alert('승인된 회원 계정이 아닙니다. 관리자 승인을 확인해 주세요.');return}
   currentUser={id:member.id,name:member.full_name,phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
   await enterApp();
+  if(member.must_change_password)showRequiredPasswordChange();
 }
 async function enterApp(){loginView.classList.add('hidden');appView.classList.remove('hidden');render('home');armMobileBackGuard();await showPendingSignupApprovals()}
 async function logout(){await hfSupabase.auth.signOut();localStorage.removeItem('autoUser');currentUser=null;appView.classList.add('hidden');loginView.classList.remove('hidden')}
@@ -850,6 +851,19 @@ async function showPendingSignupApprovals(){
 }
 async function reviewSignup(id,status){if(!isMasterAdmin())return;const {error}=await hfSupabase.from('signup_requests').update({status,reviewed_by_member_id:currentUser.id,reviewed_at:new Date().toISOString()}).eq('id',id).eq('status','pending');if(error){alert(error.message);return}closeModal();await showPendingSignupApprovals()}
 async function approveAllSignups(){if(!isMasterAdmin())return;const {data:pending,error:loadError}=await hfSupabase.from('signup_requests').select('id').eq('status','pending');if(loadError){alert(loadError.message);return}if(!pending.length){closeModal();return}const {error}=await hfSupabase.from('signup_requests').update({status:'approved',reviewed_by_member_id:currentUser.id,reviewed_at:new Date().toISOString()}).eq('status','pending');if(error){alert(error.message);return}closeModal();alert(`${pending.length}명의 가입 신청을 승인했습니다.`)}
+function showRequiredPasswordChange(){
+  openModal(`<h3>새 비밀번호 설정</h3><p class="small">임시 비밀번호로 로그인했습니다. 보안을 위해 새 비밀번호를 설정해야 계속 사용할 수 있습니다.</p><div class="inputgroup"><label>새 비밀번호</label><input id="requiredNewPassword" type="password" autocomplete="new-password" placeholder="8자 이상"></div><div class="inputgroup"><label>새 비밀번호 확인</label><input id="requiredNewPasswordConfirm" type="password" autocomplete="new-password" placeholder="다시 입력"></div><button class="btn primary full" onclick="saveRequiredPassword()">새 비밀번호 저장</button>`);
+}
+async function saveRequiredPassword(){
+  const next=document.getElementById('requiredNewPassword')?.value||'',confirmValue=document.getElementById('requiredNewPasswordConfirm')?.value||'';
+  if(next.length<8){alert('새 비밀번호는 8자 이상 입력해 주세요.');return}
+  if(next!==confirmValue){alert('새 비밀번호가 일치하지 않습니다.');return}
+  const {error:authError}=await hfSupabase.auth.updateUser({password:next});
+  if(authError){alert(authError.message);return}
+  const {error:dbError}=await hfSupabase.from('club_members').update({must_change_password:false}).eq('id',currentUser.id);
+  if(dbError){alert(dbError.message);return}
+  closeModal();alert('새 비밀번호가 저장되었습니다. 다음 로그인부터 새 비밀번호를 사용하세요.');
+}
 function toggleTheme(){let d=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=d?'':'dark';localStorage.setItem('theme',d?'light':'dark')}
 (function init(){seedV19BackupIfNeeded();restoreMembers();if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';let saved=localStorage.getItem('savedId');if(saved){loginId.value=saved;rememberId.checked=true}let au=localStorage.getItem('autoUser');if(au){let m=members.find(x=>x.phone===au&&x.status!=='INACTIVE');if(m){currentUser=m;enterApp()}}autoLogin.addEventListener('change',()=>{if(autoLogin.checked)rememberId.checked=true})})();
 </script>
