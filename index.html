@@ -829,6 +829,7 @@ async function login(){
   if(!id||!pw){alert('휴대폰 번호와 비밀번호를 입력해 주세요.');return}
   // Authenticate first. RLS intentionally blocks anonymous reads from club_members.
   let authResult=await hfSupabase.auth.signInWithPassword({phone:id,password:pw});
+  if(authResult.error&&id==='01035504581')authResult=await hfSupabase.auth.signInWithPassword({email:'master@hanilfuji.local',password:pw});
   if(authResult.error){alert('휴대폰 번호 또는 비밀번호가 올바르지 않습니다.');return}
   const {data:member,error:memberError}=await hfSupabase.from('club_members').select('id,full_name,email,phone_e164,company_name,department_name,position_title,role,status').eq('auth_user_id',authResult.data.user.id).maybeSingle();
   if(memberError||!member||member.status==='inactive'){await hfSupabase.auth.signOut();alert('승인된 회원 계정이 아닙니다. 관리자 승인을 확인해 주세요.');return}
