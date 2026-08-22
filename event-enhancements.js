@@ -6,16 +6,32 @@
   const cacheKey='hf_notices';
   function cache(rows){try{localStorage.setItem(cacheKey,JSON.stringify(rows))}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(cacheKey)||'[]')}catch(e){return []}}
+
   async function syncNotices(){
-    if(!db()||!window.currentUser)return;
+    if(!db()||!window.currentUser)return [];
     try{
-      const {data,error}=await db().from('club_notices').select('id,title,content,published,pinned,author_member_id,created_at,updated_at,image_path').eq('published',true).order('created_at',{ascending:false});
-      if(error||!data||!data.length)return;
-      const rows=data.map(n=>({id:n.id,title:n.title,content:n.content,author:(window.members||[]).find(m=>m.dbId===n.author_member_id)?.name||window.currentUser?.name||'운영진',createdAt:n.created_at,updatedAt:n.updated_at,imagePath:n.image_path||null}));
-      cache(rows); window.hfEventDbNotices=rows; if(window.currentPage==='event'&&window.eventMode==='NOTICE'&&typeof window.render==='function')window.render('event');
-    }catch(e){console.warn('[EVENT] notice sync failed',e)}
+      const {data,error}=await db().from('club_notices')
+        .select('id,title,content,published,pinned,author_member_id,created_at,updated_at,image_path')
+        .eq('published',true)
+        .order('created_at',{ascending:false});
+      if(error){console.warn('[EVENT] notice sync failed',error);return null}
+      const rows=(data||[]).map(n=>({
+        id:n.id,title:n.title,content:n.content,
+        author:(window.members||[]).find(m=>m.dbId===n.author_member_id)?.name||'운영진',
+        createdAt:n.created_at,updatedAt:n.updated_at,imagePath:n.image_path||null
+      }));
+      cache(rows);
+      window.hfEventDbNotices=rows;
+      if(window.currentPage==='event'&&window.eventMode==='NOTICE'&&typeof window.render==='function')window.render('event');
+      if(window.currentPage==='home'&&typeof window.render==='function')window.render('home');
+      return rows;
+    }catch(e){console.warn('[EVENT] notice sync failed',e);return null}
   }
-  function rows(){return window.hfEventDbNotices||readCache()}
+  window.syncClubNotices=syncNotices;
+
+  function rows(){
+    return Array.isArray(window.hfEventDbNotices)?window.hfEventDbNotices:readCache();
+  }
   function imageUrl(path){if(!path||!db())return '';return db().storage.from(BUCKET).getPublicUrl(path).data.publicUrl}
   async function uploadImage(file){
     if(!db()||!file)throw new Error('이미지 업로드 환경을 찾을 수 없습니다.');
@@ -49,23 +65,52 @@
   window.submitEventComposer=async function(){
     const type=window.composerType?.value;
     if(type!=='NOTICE')return originalSubmit();
-    if(!window.isAdmin?.() || !window.currentUser)return;
-    const title=document.getElementById('composeTitle')?.value.trim(),content=document.getElementById('composeContent')?.value.trim(),file=document.getElementById('composeNoticeImage')?.files?.[0];
+    if(!window.isAdmin?.() || !window.currentUser){alert('관리자 권한을 확인할 수 없습니다.');return}
+    const title=document.getElementById('composeTitle')?.value.trim();
+    const content=document.getElementById('composeContent')?.value.trim();
+    const file=document.getElementById('composeNoticeImage')?.files?.[0];
     if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}
+    const button=document.querySelector('#composerFields button[onclick*="submitEventComposer"]');
+    if(button){button.disabled=true;button.textContent='공지 올리는 중...'}
     let path=null;
     try{
+      if(!db())throw new Error('Supabase 연결을 찾을 수 없습니다.');
+      if(!window.currentUser.dbId)throw new Error('관리자 회원 DB 연결을 찾을 수 없습니다.');
       if(file)path=await uploadImage(file);
-      if(db()&&window.currentUser?.dbId){
-        const {data,error}=await db().from('club_notices').insert({title,content,published:true,pinned:false,author_member_id:window.currentUser.dbId,image_path:path}).select('id,title,content,created_at,updated_at,image_path').single();
-        if(error)throw error;
-        const n={id:data.id,title:data.title,content:data.content,author:window.currentUser.name,createdAt:data.created_at,updatedAt:data.updated_at,imagePath:data.image_path||null};
-        const next=[n,...rows().filter(x=>x.id!==n.id)];cache(next);window.hfEventDbNotices=next;
-      }else{
-        const next=readCache();next.push({id:`notice-${Date.now()}`,title,content,author:window.currentUser.name,createdAt:new Date().toISOString(),imagePath:path});cache(next);
-      }
+      const {data,error}=await db().from('club_notices').insert({title,content,published:true,pinned:false,author_member_id:window.currentUser.dbId,image_path:path}).select('id,title,content,created_at,updated_at,image_path').single();
+      if(error)throw error;
+      const n={id:data.id,title:data.title,content:data.content,author:window.currentUser.name,createdAt:data.created_at,updatedAt:data.updated_at,imagePath:data.image_path||null};
+      const next=[n,...rows().filter(x=>x.id!==n.id)];
+      cache(next);window.hfEventDbNotices=next;
       closeModal();window.eventMode='NOTICE';render('event');
-    }catch(e){if(path)await removeImage(path).catch(()=>{});alert('공지 등록에 실패했습니다.\n'+(e?.message||e));}
+      await syncNotices();
+      alert('공지 등록이 완료되었습니다.');
+    }catch(e){
+      if(path)await removeImage(path).catch(()=>{});
+      alert('공지 등록에 실패했습니다.\n'+(e?.message||e));
+    }finally{
+      if(button){button.disabled=false;button.textContent='공지 등록'}
+    }
   };
+
+  // HOME used to read only localStorage. Replace it with the DB-backed list once synced.
+  const originalHomeNoticeRender=window.renderHomeNotices;
+  window.renderHomeNotices=function(){
+    const dbRows=window.hfEventDbNotices;
+    if(!Array.isArray(dbRows))return originalHomeNoticeRender();
+    const list=dbRows.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,2);
+    return `<div class="card">${list.map(n=>`<div class="notice" onclick="openNotice('${esc(n.id)}')"><strong>${esc(n.title)}</strong><small>${formatShortDate(n.createdAt)} · ${esc(n.author||'운영진')}</small></div>`).join('')||'<div class="empty">등록된 공지가 없습니다.</div>'}</div>`;
+  };
+
+  // Ensure notice data is fetched after authentication, not only on initial page load.
+  const originalEnterApp=window.enterApp;
+  if(typeof originalEnterApp==='function'){
+    window.enterApp=async function(){
+      const result=await originalEnterApp();
+      await syncNotices();
+      return result;
+    };
+  }
 
   window.renderEventNotices=function(){
     const list=rows().slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -93,16 +138,16 @@
         const {error}=await db().from('club_notices').update({title,content,image_path:newPath,updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;
       }
       if(file&&n.imagePath&&n.imagePath!==newPath)await removeImage(n.imagePath).catch(()=>{});
-      const next=rows().map(x=>String(x.id)===String(id)?{...x,title,content,updatedAt:new Date().toISOString(),imagePath:newPath}:x);cache(next);window.hfEventDbNotices=next;closeModal();render('event');
+      const next=rows().map(x=>String(x.id)===String(id)?{...x,title,content,updatedAt:new Date().toISOString(),imagePath:newPath}:x);cache(next);window.hfEventDbNotices=next;closeModal();render('event');await syncNotices();
     }catch(e){if(file&&newPath!==n.imagePath)await removeImage(newPath).catch(()=>{});alert('공지 수정에 실패했습니다.\n'+(e?.message||e));}
   };
 
   window.deleteNotice=async function(id){
-    if(!window.isAdmin?.())return;const n=rows().find(x=>String(x.id)===String(id));if(!n)return;if(!confirm(`공지 "${n.title}"을(를) 삭제하시겠습니까?\n삭제 후에는 목록과 HOME 최근 공지에서 사라집니다.`))return;
+    if(!window.isAdmin?.())return;const n=rows().find(x=>String(x.id)===String(id));if(!n)return;if(!confirm(`공지 \"${n.title}\"을(를) 삭제하시겠습니까?\n삭제 후에는 목록과 HOME 최근 공지에서 사라집니다.`))return;
     try{
       if(db()){const {error}=await db().from('club_notices').delete().eq('id',id);if(error)throw error;}
       if(n.imagePath)await removeImage(n.imagePath).catch(()=>{});
-      const next=rows().filter(x=>String(x.id)!==String(id));cache(next);window.hfEventDbNotices=next;closeModal();render('event');
+      const next=rows().filter(x=>String(x.id)!==String(id));cache(next);window.hfEventDbNotices=next;closeModal();render('event');await syncNotices();
     }catch(e){alert('공지 삭제에 실패했습니다.\n'+(e?.message||e));}
   };
 
@@ -116,6 +161,6 @@
     });
   };
 
-  window.addEventListener('load',()=>{setTimeout(syncNotices,200);});
+  window.addEventListener('load',()=>{setTimeout(()=>{if(window.currentUser)syncNotices()},200);});
   if(window.currentUser)setTimeout(syncNotices,0);
 })();
