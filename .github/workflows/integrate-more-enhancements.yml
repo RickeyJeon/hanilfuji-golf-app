@@ -20,7 +20,7 @@ jobs:
           const fs=require('fs');
           const p='index.html';
           let s=fs.readFileSync(p,'utf8');
-          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js','admin-score-enhancements.js']) {
+          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js','admin-score-enhancements.js','mobile-refresh-fix.js']) {
             const tag=`<script src="./${file}"></script>`;
             if(!s.includes(tag)){
               const marker='</body>';
@@ -36,5 +36,5 @@ jobs:
           git config user.email '41898282+users.noreply.github.com'
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m 'chore: integrate admin score enhancements [enhancements-integrated]'
+          git commit -m 'chore: integrate mobile refresh fix [enhancements-integrated]'
           git push
