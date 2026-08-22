@@ -1,4 +1,4 @@
-name: Integrate MORE enhancements
+name: Integrate app enhancements
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   integrate:
-    if: "!contains(github.event.head_commit.message, '[more-integrated]')"
+    if: "!contains(github.event.head_commit.message, '[enhancements-integrated]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
           const fs=require('fs');
           const p='index.html';
           let s=fs.readFileSync(p,'utf8');
-          for (const file of ['more-enhancements.js','password-enhancements.js']) {
+          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js']) {
             const tag=`<script src="./${file}"></script>`;
             if(!s.includes(tag)){
               const marker='</body>';
@@ -33,8 +33,8 @@ jobs:
       - name: Commit integration
         run: |
           git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.email '41898282+users.noreply.github.com'
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m 'chore: integrate password recovery enhancements [more-integrated]'
+          git commit -m 'chore: integrate EVENT enhancements [enhancements-integrated]'
           git push
