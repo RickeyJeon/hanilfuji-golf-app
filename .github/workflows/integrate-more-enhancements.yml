@@ -1,0 +1,38 @@
+name: Integrate MORE enhancements
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: "!contains(github.event.head_commit.message, '[more-integrated]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject MORE enhancement script
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='index.html';
+          let s=fs.readFileSync(p,'utf8');
+          const tag='<script src="./more-enhancements.js"></script>';
+          if(!s.includes(tag)){
+            const marker='</body>';
+            if(!s.includes(marker)) throw new Error('index.html: </body> not found');
+            s=s.replace(marker,`${tag}\n${marker}`);
+            fs.writeFileSync(p,s);
+          }
+          NODE
+      - name: Commit integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore: integrate MORE enhancements [more-integrated]'
+          git push
