@@ -927,5 +927,6 @@ function setupPasswordVisibility(){document.querySelectorAll('input[type="passwo
 (function init(){seedV19BackupIfNeeded();restoreMembers();if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';let saved=localStorage.getItem('savedId');if(saved){loginId.value=saved;rememberId.checked=true}let au=localStorage.getItem('autoUser');if(au){let m=members.find(x=>x.phone===au&&x.status!=='INACTIVE');if(m){currentUser=m;enterApp()}}autoLogin.addEventListener('change',()=>{if(autoLogin.checked)rememberId.checked=true})})();
 setupPasswordVisibility();
 </script>
+<script src="./more-enhancements.js"></script>
 </body>
 </html>
