@@ -10,7 +10,7 @@
     if(!db()||!window.currentUser)return;
     try{
       const {data,error}=await db().from('club_notices').select('id,title,content,published,pinned,author_member_id,created_at,updated_at,image_path').eq('published',true).order('created_at',{ascending:false});
-      if(error||!data)return;
+      if(error||!data||!data.length)return;
       const rows=data.map(n=>({id:n.id,title:n.title,content:n.content,author:(window.members||[]).find(m=>m.dbId===n.author_member_id)?.name||window.currentUser?.name||'운영진',createdAt:n.created_at,updatedAt:n.updated_at,imagePath:n.image_path||null}));
       cache(rows); window.hfEventDbNotices=rows; if(window.currentPage==='event'&&window.eventMode==='NOTICE'&&typeof window.render==='function')window.render('event');
     }catch(e){console.warn('[EVENT] notice sync failed',e)}
@@ -28,6 +28,8 @@
   }
   async function removeImage(path){if(!path||!db())return;await db().storage.from(BUCKET).remove([path]);}
 
+  const style=document.createElement('style');style.textContent='.event-image-frame,.notice-thumb,.notice-detail-image{width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:14px;background:var(--green3);margin-top:9px}.event-image-frame img,.notice-thumb img,.notice-detail-image img{width:100%;height:100%;display:block;object-fit:cover}.notice-detail-image{margin:0 0 14px;border-radius:16px}';document.head.appendChild(style);
+
   window.eventImagePreview=function(input){
     const file=input?.files?.[0],box=document.getElementById('eventImagePreview'); if(!box)return;
     if(!file){box.innerHTML='';return}
@@ -36,7 +38,7 @@
 
   const originalSetComposerType=window.setComposerType;
   window.setComposerType=function(type){
-    if(type!=='NOTICE'){return originalSetComposerType(type)}
+    if(type!=='NOTICE')return originalSetComposerType(type);
     window.composerType.value=type;
     ['Notice','Schedule','Group'].forEach(k=>document.getElementById('ct'+k)?.classList.remove('active'));
     document.getElementById('ctNotice')?.classList.add('active');
@@ -47,7 +49,7 @@
   window.submitEventComposer=async function(){
     const type=window.composerType?.value;
     if(type!=='NOTICE')return originalSubmit();
-    if(!window.isAdmin?.() && window.currentUser?.role==='USER')return;
+    if(!window.isAdmin?.() || !window.currentUser)return;
     const title=document.getElementById('composeTitle')?.value.trim(),content=document.getElementById('composeContent')?.value.trim(),file=document.getElementById('composeNoticeImage')?.files?.[0];
     if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}
     let path=null;
@@ -104,7 +106,6 @@
     }catch(e){alert('공지 삭제에 실패했습니다.\n'+(e?.message||e));}
   };
 
-  const originalUpcoming=window.upcomingEvents;
   window.upcomingEvents=function(){
     const all=(typeof getClubEvents==='function'?getClubEvents():[]).slice();
     const now=new Date();
