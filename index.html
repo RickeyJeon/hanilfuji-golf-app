@@ -481,7 +481,7 @@ function openEventComposer(){
 }
 function setComposerType(type){
   composerType.value=type;['Notice','Schedule','Group'].forEach(k=>document.getElementById('ct'+k)?.classList.remove('active'));document.getElementById('ct'+(type==='NOTICE'?'Notice':type==='SCHEDULE'?'Schedule':'Group'))?.classList.add('active');
-  if(type==='NOTICE')composerFields.innerHTML=`<div class="inputgroup"><label>공지 제목</label><input id="composeTitle" placeholder="예: 9월 스크린대회 안내"></div><div class="inputgroup"><label>내용</label><textarea id="composeContent" class="textarea" placeholder="회원들에게 전달할 내용을 입력해 주세요."></textarea></div><button class="btn primary full" onclick="submitEventComposer()">공지 등록</button>`;
+  if(type==='NOTICE')composerFields.innerHTML=`<div class="inputgroup"><label>공지 제목</label><input id="composeTitle" placeholder="예: 9월 스크린대회 안내"></div><div class="inputgroup"><label>내용</label><textarea id="composeContent" class="textarea" placeholder="회원들에게 전달할 내용을 입력해 주세요."></textarea></div><div class="inputgroup"><label>첨부 이미지 (JPG/PNG/WebP, 최대 2MB)</label><input id="composeImage" type="file" accept="image/jpeg,image/png,image/webp"></div><button class="btn primary full" onclick="submitEventComposer()">공지 등록</button>`;
   if(type==='SCHEDULE')composerFields.innerHTML=`<div class="inputgroup"><label>대회명</label><input id="composeTitle" placeholder="예: 9월 정기 라운딩"></div><div class="month-grid"><div class="inputgroup"><label>대회 종류</label><select id="composeEventType" class="select"><option value="SCREEN">스크린</option><option value="FIELD">필드</option></select></div><div class="inputgroup"><label>날짜</label><input id="composeDate" type="date" value="2026-08-28" onchange="updateDeadlinePreview()"></div></div><div class="month-grid"><div class="inputgroup"><label>시간</label><input id="composeTime" type="time" value="19:00"></div><div class="inputgroup"><label>참석 마감</label><input id="composeDeadline" type="datetime-local" value="2026-08-27T23:59"></div></div><div class="inputgroup"><label>장소</label><input id="composeLocation" placeholder="골프장 / 골프존 지점"></div><div class="inputgroup"><label>코스 / 맵</label><input id="composeCourse" placeholder="예: 가야 CC / PINE-LAKE"></div><div class="type-hint">대회 날짜를 선택하면 전날 23:59가 기본값으로 입력됩니다. 필요하면 관리자가 참석 마감 날짜와 시간을 직접 수정할 수 있습니다.</div><button class="btn primary full" onclick="submitEventComposer()">일정 등록</button>`;
   if(type==='GROUP'){const opts=upcomingEvents().map(e=>`<option value="${e.id}">${e.date.slice(5).replace('-','.')} · ${e.title}</option>`).join('');composerFields.innerHTML=`<div class="inputgroup"><label>대회 선택</label><select id="composeGroupEvent" class="select">${opts}</select></div><div class="type-hint">현재 참석자로 조편성을 미리 만들 수 있습니다. 마감 이후에는 참석 회원을 기준으로 자동 생성됩니다.</div><button class="btn primary full" onclick="submitEventComposer()">조편성 화면으로 이동</button>`}
 }
@@ -490,10 +490,13 @@ async function submitEventComposer(){
   const type=composerType.value;
   if(type==='NOTICE'){
     if(!isAdmin())return;
-    const title=composeTitle.value.trim(),content=composeContent.value.trim();if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}
+    const title=composeTitle.value.trim(),content=composeContent.value.trim(),file=document.getElementById('composeImage')?.files?.[0];if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}
     if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
-    const {error}=await hfSupabase.from('club_notices').insert({title,content,published:true,pinned:false,author_member_id:currentUser.dbId});
-    if(error){alert(error.message);return}
+    if(file&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2097152)){alert('이미지는 JPG, PNG, WebP 형식이며 2MB 이하만 업로드할 수 있습니다.');return}
+    let imagePath=null;
+    if(file){const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';imagePath='notices/'+currentUser.dbId+'/'+Date.now()+'.'+ext;const {error:uploadError}=await hfSupabase.storage.from('event-notices').upload(imagePath,file,{contentType:file.type,upsert:false});if(uploadError){alert(uploadError.message);return}}
+    const {error}=await hfSupabase.from('club_notices').insert({title,content,published:true,pinned:false,author_member_id:currentUser.dbId,image_path:imagePath});
+    if(error){if(imagePath)await hfSupabase.storage.from('event-notices').remove([imagePath]);alert(error.message);return}
     await loadSupabaseNotices();closeModal();eventMode='NOTICE';render('event');return;
   }
   if(type==='SCHEDULE'){
