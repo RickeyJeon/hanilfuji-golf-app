@@ -419,10 +419,13 @@ function manageEventAttendance(eventId){
   openModal(`<h3>참석 · 식사 현황 관리</h3><p class="small">관리자는 회원의 참석/불참과 식사 여부를 직접 수정할 수 있습니다.</p><div class="attendance-list">${active.map(m=>{const v=getEventVote(e,m.id);return `<div class="attendance-person"><div><strong>${nameOf(m)}</strong><small>${m.dept} · ${m.position}</small></div><select id="att_${m.id}" onchange="syncAdminMeal(${m.id})"><option value="" ${!v.attendance?'selected':''}>미선택</option><option value="ATTENDING" ${v.attendance==='ATTENDING'?'selected':''}>참석</option><option value="DECLINED" ${v.attendance==='DECLINED'?'selected':''}>불참</option></select><select id="meal_${m.id}" ${v.attendance!=='ATTENDING'?'disabled':''}><option value="" ${!v.meal?'selected':''}>식사 미선택</option><option value="MEAL" ${v.meal==='MEAL'?'selected':''}>식사</option><option value="NO_MEAL" ${v.meal==='NO_MEAL'?'selected':''}>미식사</option></select></div>`}).join('')}</div><button class="btn primary full" style="margin-top:12px" onclick="saveAdminAttendance('${eventId}')">현황 저장</button>`);
 }
 function syncAdminMeal(memberId){const a=document.getElementById('att_'+memberId),m=document.getElementById('meal_'+memberId);if(!a||!m)return;m.disabled=a.value!=='ATTENDING';if(m.disabled)m.value=''}
-function saveAdminAttendance(eventId){
-  if(!isAdmin())return;const events=getClubEvents(),e=events.find(x=>x.id===eventId);if(!e)return;e.votes=e.votes||{};
-  members.filter(m=>m.status!=='INACTIVE').forEach(m=>{const a=document.getElementById('att_'+m.id),meal=document.getElementById('meal_'+m.id);if(!a)return;const attendance=a.value||null;const mv=attendance==='ATTENDING'?(meal?.value||null):null;e.votes[m.id]={attendance,meal:mv}});
-  saveClubEvents(events);render('event');alert('참석 및 식사 현황을 저장했습니다.');openEventDetail(eventId);
+async function saveAdminAttendance(eventId){
+  if(!isAdmin())return;const events=getClubEvents(),e=events.find(x=>x.id===eventId);if(!e||!hfSupabase||!currentUser?.dbId)return;
+  const rows=members.filter(m=>m.status!=='INACTIVE').map(m=>{const a=document.getElementById('att_'+m.id),meal=document.getElementById('meal_'+m.id);const attendance=(a?.value||'PENDING').toLowerCase();return {event_id:eventId,member_id:m.dbId||null,attendance,meal:attendance==='attending'?((meal?.value||'none').toLowerCase()):'none',updated_by_member_id:currentUser.dbId}}).filter(row=>row.member_id);
+  if(!rows.length){alert('회원 DB 연결을 확인할 수 없습니다.');return}
+  const {error}=await hfSupabase.from('event_attendance_responses').upsert(rows,{onConflict:'event_id,member_id'});
+  if(error){alert(error.message);return}
+  await loadSupabaseClubEvents();render('event');alert('참석 및 식사 현황을 저장했습니다.');openEventDetail(eventId);
 }
 function openEventDetail(id){
   const e=getClubEvents().find(x=>x.id===id);if(!e)return;const c=eventCounts(e),ended=isEventEnded(e),kind=e.type==='FIELD'?'필드':'스크린';
