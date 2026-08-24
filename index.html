@@ -215,6 +215,7 @@ async function loadSupabaseClubEvents(){
   ]);
   if(eventError||responseError||directoryError){console.error('Supabase events load failed',eventError||responseError||directoryError);dbClubEvents=[];return}
   const legacyIdByDbId=new Map((directory||[]).map(item=>[item.id,members.find(member=>member.phone===item.phone_e164)?.id]).filter(([,id])=>id!==undefined));
+  (directory||[]).forEach(item=>{const member=members.find(candidate=>candidate.phone===item.phone_e164);if(member)member.dbId=item.id});
   const responseByEvent=new Map();
   (responses||[]).forEach(item=>{
     const memberId=legacyIdByDbId.get(item.member_id);if(memberId===undefined)return;
