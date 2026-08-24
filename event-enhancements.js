@@ -4,13 +4,14 @@
   const db=()=>window.hfSupabase;
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const cacheKey='hf_notices';
+  window.hfEventDbNotices=null;
   function cache(rows){try{localStorage.setItem(cacheKey,JSON.stringify(rows))}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(cacheKey)||'[]')}catch(e){return []}}
   async function syncNotices(){
     if(!db()||!window.currentUser)return [];
     try{
       const {data,error}=await db().from('club_notices').select('id,title,content,published,pinned,author_member_id,created_at,updated_at,image_path').eq('published',true).order('created_at',{ascending:false});
-      if(error){console.warn('[EVENT] notice sync failed',error);return null}
+      if(error){console.warn('[EVENT] notice sync failed',error);window.hfEventDbNotices=[];return []}
       const rows=(data||[]).map(n=>({id:n.id,title:n.title,content:n.content,author:(window.members||[]).find(m=>m.dbId===n.author_member_id)?.name||'운영진',createdAt:n.created_at,updatedAt:n.updated_at,imagePath:n.image_path||null}));
       cache(rows);window.hfEventDbNotices=rows;
       if(window.currentPage==='event'&&window.eventMode==='NOTICE'&&typeof window.render==='function')window.render('event');
@@ -19,7 +20,7 @@
     }catch(e){console.warn('[EVENT] notice sync failed',e);return null}
   }
   window.syncClubNotices=syncNotices;
-  function rows(){return Array.isArray(window.hfEventDbNotices)?window.hfEventDbNotices:readCache()}
+  function rows(){return Array.isArray(window.hfEventDbNotices)?window.hfEventDbNotices:[]}
   function imageUrl(path){if(!path||!db())return '';return db().storage.from(BUCKET).getPublicUrl(path).data.publicUrl}
   async function uploadImage(file){
     if(!db()||!file)throw new Error('이미지 업로드 환경을 찾을 수 없습니다.');
