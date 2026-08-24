@@ -352,12 +352,15 @@ async function saveNoticeEdit(id){
   await loadSupabaseNotices();closeModal();render(currentPage);
 }
 
-function deleteNotice(id){
+async function deleteNotice(id){
   if(!isAdmin())return;
-  const rows=getNotices(),n=rows.find(x=>x.id===id);if(!n)return;
+  const n=getNotices().find(x=>x.id===id);if(!n)return;
   if(!confirm(`공지 "${n.title}"을(를) 삭제하시겠습니까?
 삭제 후에는 목록과 HOME 최근 공지에서 사라집니다.`))return;
-  saveNotices(rows.filter(x=>x.id!==id));closeModal();render(currentPage);
+  if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
+  const {error}=await hfSupabase.from('club_notices').delete().eq('id',id);
+  if(error){alert(error.message);return}
+  await loadSupabaseNotices();closeModal();render(currentPage);
 }
 
 function renderEventNotices(){
