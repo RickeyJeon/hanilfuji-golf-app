@@ -4,7 +4,7 @@
   const db=()=>window.hfSupabase;
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const cacheKey='hf_notices';
-  window.hfEventDbNotices=null;
+  window.hfEventDbNotices=[];
   function cache(rows){try{localStorage.setItem(cacheKey,JSON.stringify(rows))}catch(e){}}
   function readCache(){try{return JSON.parse(localStorage.getItem(cacheKey)||'[]')}catch(e){return []}}
   async function syncNotices(){
