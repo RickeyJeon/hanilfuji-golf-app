@@ -209,7 +209,7 @@ async function loadSupabaseNotices(){
 async function loadSupabaseClubEvents(){
   if(!hfSupabase||!currentUser)return;
   const [{data:events,error:eventError},{data:responses,error:responseError},{data:directory,error:directoryError}]=await Promise.all([
-    hfSupabase.from('club_events').select('id,legacy_key,title,description,event_type,event_status,venue_name,venue_address,course_name,starts_at,ends_at,attendance_deadline,published').eq('published',true).order('starts_at',{ascending:true}),
+    hfSupabase.from('club_events').select('id,legacy_key,title,description,event_type,event_status,venue_name,venue_address,course_name,starts_at,ends_at,attendance_deadline,published,created_at,updated_at').eq('published',true).order('starts_at',{ascending:true}),
     hfSupabase.from('event_attendance_responses').select('event_id,member_id,attendance,meal'),
     hfSupabase.from('member_score_directory').select('id,phone_e164')
   ]);
@@ -226,7 +226,7 @@ async function loadSupabaseClubEvents(){
   const localDateTime=value=>value?new Date(value).toLocaleString('sv-SE',{timeZone:'Asia/Seoul',hour12:false}).slice(0,16):'';
   dbClubEvents=(events||[]).map(event=>{
     const start=localDateTime(event.starts_at),end=localDateTime(event.ends_at),deadline=localDateTime(event.attendance_deadline);
-    return {id:event.id,legacyKey:event.legacy_key||event.id,title:event.title,description:event.description||'',type:String(event.event_type||'screen').toUpperCase(),status:String(event.event_status||'draft').toUpperCase(),date:start.slice(0,10),time:start.slice(11,16),endDate:end.slice(0,10),endTime:end.slice(11,16),location:event.venue_name||'',address:event.venue_address||'',courseName:event.course_name||'',deadline,votes:responseByEvent.get(event.id)||{}};
+    return {id:event.id,legacyKey:event.legacy_key||event.id,title:event.title,description:event.description||'',type:String(event.event_type||'screen').toUpperCase(),status:String(event.event_status||'draft').toUpperCase(),date:start.slice(0,10),time:start.slice(11,16),endDate:end.slice(0,10),endTime:end.slice(11,16),location:event.venue_name||'',address:event.venue_address||'',courseName:event.course_name||'',deadline,createdAt:event.created_at,updatedAt:event.updated_at,votes:responseByEvent.get(event.id)||{}};
   });
 }
 function saveNotices(v){localStorage.setItem('hf_notices',JSON.stringify(v))}
@@ -378,7 +378,6 @@ async function saveNoticeEdit(id){
   if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
   const {error}=await hfSupabase.from('club_notices').update({title,content,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){alert(error.message);return}
-  if(n.imagePath){const {error:storageError}=await hfSupabase.storage.from('event-notices').remove([n.imagePath]);if(storageError)console.warn('Notice image cleanup failed',storageError)}
   await loadSupabaseNotices();closeModal();render(currentPage);
 }
 
@@ -390,6 +389,7 @@ async function deleteNotice(id){
   if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
   const {error}=await hfSupabase.from('club_notices').delete().eq('id',id);
   if(error){alert(error.message);return}
+  if(n.imagePath){const {error:storageError}=await hfSupabase.storage.from('event-notices').remove([n.imagePath]);if(storageError)console.warn('Notice image cleanup failed',storageError)}
   await loadSupabaseNotices();closeModal();render(currentPage);
 }
 
@@ -399,7 +399,7 @@ function renderEventNotices(){
   return rows.map(n=>`<div class="room-card notice-card" onclick="openNotice('${n.id}')"><div class="notice-head"><span class="notice-tag">NOTICE</span><div class="notice-title">${n.title}</div><span class="chev">›</span></div><div class="notice-meta">${formatShortDate(n.createdAt)} · ${n.author}</div></div>`).join('');
 }
 function renderEventSchedule(){
-  const events=upcomingEvents();
+  const events=getClubEvents().slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
   if(!events.length)return `<div class="card"><div class="empty">등록된 일정이 없습니다.</div></div>`;
   return events.map(e=>{
     const c=eventCounts(e),ended=isEventEnded(e),kind=e.type==='FIELD'?'필드':'스크린';
