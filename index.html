@@ -309,14 +309,16 @@ function updateMeal(eventId,choice){
   window.hfVoteDrafts[eventId]=d;window.hfVoteEditing[eventId]=true;
   render(currentPage);
 }
-function submitEventVote(eventId){
+async function submitEventVote(eventId){
   const events=getClubEvents(),e=events.find(x=>x.id===eventId);if(!e||!currentUser)return;
   if(isVoteClosed(e)||isEventEnded(e)){alert('투표가 마감되었습니다.');return}
   const d=getVoteDraft(e);
   if(!d.attendance){alert('참석 또는 불참을 선택해 주세요.');return}
   if(d.attendance==='ATTENDING'&&!d.meal){alert('식사 또는 미식사를 선택해 주세요.');return}
-  e.votes=e.votes||{};e.votes[currentUser.id]={attendance:d.attendance,meal:d.attendance==='ATTENDING'?d.meal:null};
-  saveClubEvents(events);delete window.hfVoteDrafts[eventId];delete window.hfVoteEditing[eventId];
+  if(!hfSupabase||!currentUser.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
+  const {error}=await hfSupabase.from('event_attendance_responses').upsert({event_id:eventId,member_id:currentUser.dbId,attendance:d.attendance.toLowerCase(),meal:d.attendance==='ATTENDING'?(d.meal==='MEAL'?'meal':'no_meal'):'none',updated_by_member_id:currentUser.dbId},{onConflict:'event_id,member_id'});
+  if(error){alert(error.message);return}
+  await loadSupabaseClubEvents();delete window.hfVoteDrafts[eventId];delete window.hfVoteEditing[eventId];
   alert('투표가 완료되었습니다.');render(currentPage);
 }
 function eventVoteControls(e){
