@@ -57,7 +57,10 @@
     finally{syncing=false}
   }
 
-  // Legacy localStorage is a cache only; never push it back to Production automatically.\n  async function pushScoresToSupabase(){return;}\n\n  async function tick(){
+  // Legacy localStorage is a cache only; never push it back to Production automatically.
+  async function pushScoresToSupabase(){return;}
+
+  async function tick(){
     if(!window.currentUser||!db())return;
     await subscribeSharedChanges();
     await pullScoresToLocal();
