@@ -897,7 +897,7 @@ function openModal(html){modal.classList.remove('hidden');sheet.innerHTML=`<div 
 
 // Supabase Auth is the source of truth for sign-in and approval actions.
 function isMasterAdmin(){return normalizePhone(currentUser?.phone)==='01035504581'&&currentUser?.role==='PRIMARY_ADMIN'}
-function isAdmin(){return !!currentUser&&['PRIMARY_ADMIN','ASSISTANT_ADMIN'].includes(currentUser.role)}
+function isAdmin(){return !!currentUser&&['PRIMARY_ADMIN','ASSISTANT_ADMIN','primary_admin','assistant_admin'].includes(currentUser.role)}
 async function loadSupabaseScoreEvents(){
   if(!hfSupabase||!currentUser)return;
   const [{data:events},{data:scores},{data:directory}]=await Promise.all([
