@@ -343,8 +343,13 @@ function editNotice(id){
   if(!isAdmin())return;const n=getNotices().find(x=>x.id===id);if(!n)return;
   openModal(`<h3>공지 수정</h3><div class="inputgroup"><label>공지 제목</label><input id="editNoticeTitle" value="${n.title}"></div><div class="inputgroup"><label>내용</label><textarea id="editNoticeContent" class="textarea">${n.content}</textarea></div><button class="btn primary full" onclick="saveNoticeEdit('${id}')">수정 저장</button>`)
 }
-function saveNoticeEdit(id){
-  if(!isAdmin())return;const rows=getNotices(),n=rows.find(x=>x.id===id);if(!n)return;const title=editNoticeTitle.value.trim(),content=editNoticeContent.value.trim();if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}n.title=title;n.content=content;n.updatedAt=new Date().toISOString();saveNotices(rows);closeModal();render(currentPage);
+async function saveNoticeEdit(id){
+  if(!isAdmin())return;
+  const title=editNoticeTitle.value.trim(),content=editNoticeContent.value.trim();if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}
+  if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
+  const {error}=await hfSupabase.from('club_notices').update({title,content,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){alert(error.message);return}
+  await loadSupabaseNotices();closeModal();render(currentPage);
 }
 
 function deleteNotice(id){
