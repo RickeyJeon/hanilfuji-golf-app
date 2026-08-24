@@ -436,23 +436,29 @@ function openEventDetail(id){
   openModal(`<div class="detail-head"><div><span class="pill ${ended?'ended':e.type==='FIELD'?'gold':''}">${ended?'대회 종료':kind}</span><h3 style="margin-top:9px">${e.title}</h3></div>${isAdmin()?`<div style="display:flex;gap:6px"><button class="edit-mini" onclick="editEvent('${e.id}')">수정</button><button class="edit-mini" style="color:#b42318;border-color:#f1b7b1" onclick="deleteEvent('${e.id}')">삭제</button></div>`:''}</div><div class="meta"><b>일정</b><span>${e.date.replaceAll('-','.')} ${e.time}</span><b>장소</b><span>${e.location}</span>${e.courseName?`<b>코스 / 맵</b><span>${e.courseName}</span>`:''}<b>참석 마감</b><span>${deadlineText(e)}</span></div><div class="attendance-actions"><button class="attendance-chip" onclick="openAttendanceList('${e.id}','ATTENDING')"><span>참석</span><b>${c.attending}명</b></button><button class="attendance-chip" onclick="openAttendanceList('${e.id}','DECLINED')"><span>불참</span><b>${c.declined}명</b></button><button class="attendance-chip" onclick="openAttendanceList('${e.id}','MEAL')"><span>식사</span><b>${c.meal}명</b></button><button class="attendance-chip" onclick="openAttendanceList('${e.id}','NO_MEAL')"><span>미식사</span><b>${c.noMeal}명</b></button></div>${isAdmin()?`<button class="btn secondary full" style="margin-top:10px" onclick="manageEventAttendance('${e.id}')">참석 · 식사 현황 수정</button>`:''}${eventVoteControls(e)}`)
 }
 
-function deleteEvent(id){
-  if(!isAdmin())return;
-  const events=getClubEvents(),e=events.find(x=>x.id===id);if(!e)return;
+async function deleteEvent(id){
+  if(!isAdmin()||!hfSupabase)return;
+  const e=getClubEvents().find(x=>x.id===id);if(!e)return;
   if(!confirm(`일정 "${e.title}"을(를) 삭제하시겠습니까?
 참석/불참 및 식사 선택 정보도 함께 제거됩니다.`))return;
-  saveClubEvents(events.filter(x=>x.id!==id));
-  try{const groups=JSON.parse(localStorage.getItem('hf_groups')||'{}');delete groups[id];localStorage.setItem('hf_groups',JSON.stringify(groups));}catch(err){}
-  closeModal();render('event');
+  const {error}=await hfSupabase.from('club_events').delete().eq('id',id);
+  if(error){alert(error.message);return}
+  await loadSupabaseClubEvents();closeModal();render('event');
 }
 
 function editEvent(id){
   if(!isAdmin())return;const e=getClubEvents().find(x=>x.id===id);if(!e)return;
   openModal(`<h3>일정 수정</h3><div class="inputgroup"><label>대회명</label><input id="editEventTitle" value="${e.title}"></div><div class="month-grid"><div class="inputgroup"><label>대회 종류</label><select id="editEventType" class="select"><option value="SCREEN" ${e.type==='SCREEN'?'selected':''}>스크린</option><option value="FIELD" ${e.type==='FIELD'?'selected':''}>필드</option></select></div><div class="inputgroup"><label>날짜</label><input id="editEventDate" type="date" value="${e.date}"></div></div><div class="month-grid"><div class="inputgroup"><label>시간</label><input id="editEventTime" type="time" value="${e.time}"></div><div class="inputgroup"><label>참석 마감</label><input id="editEventDeadline" type="datetime-local" value="${e.deadline||''}"></div></div><div class="inputgroup"><label>장소</label><input id="editEventLocation" value="${e.location}"></div><div class="inputgroup"><label>코스 / 맵</label><input id="editEventCourse" value="${e.courseName||''}" placeholder="예: 가야 CC / PINE-LAKE"></div><button class="btn primary full" onclick="saveEventEdit('${id}')">수정 저장</button>`)
 }
-function saveEventEdit(id){
-  if(!isAdmin())return;const events=getClubEvents(),e=events.find(x=>x.id===id);if(!e)return;const title=editEventTitle.value.trim(),date=editEventDate.value,time=editEventTime.value,location=editEventLocation.value.trim(),courseName=(document.getElementById('editEventCourse')?.value||'').trim(),deadline=editEventDeadline.value;if(!title||!date||!time||!location||!deadline){alert('일정 정보를 모두 입력해 주세요.');return}e.title=title;e.type=editEventType.value;e.date=date;e.time=time;e.location=location;e.courseName=courseName;e.deadline=deadline;saveClubEvents(events);render('event');openEventDetail(id);
+async function saveEventEdit(id){
+  if(!isAdmin()||!hfSupabase)return;const e=getClubEvents().find(x=>x.id===id);if(!e)return;
+  const title=editEventTitle.value.trim(),date=editEventDate.value,time=editEventTime.value,location=editEventLocation.value.trim(),courseName=(document.getElementById('editEventCourse')?.value||'').trim(),deadline=editEventDeadline.value;
+  if(!title||!date||!time||!location||!deadline){alert('일정 정보를 모두 입력해 주세요.');return}
+  const {error}=await hfSupabase.from('club_events').update({title,event_type:String(editEventType.value||'SCREEN').toLowerCase(),venue_name:location,course_name:courseName||null,starts_at:new Date(`${date}T${time}:00+09:00`).toISOString(),attendance_deadline:new Date(`${deadline}:00+09:00`).toISOString()}).eq('id',id);
+  if(error){alert(error.message);return}
+  await loadSupabaseClubEvents();render('event');openEventDetail(id);
 }
+
 function renderEventGroups(){
   const events=upcomingEvents();if(!events.length)return `<div class="card"><div class="empty">등록된 일정이 없습니다.</div></div>`;
   if(!groupEventId||!events.some(e=>e.id===groupEventId))groupEventId=(nextClubEvent()||events[0]).id;
