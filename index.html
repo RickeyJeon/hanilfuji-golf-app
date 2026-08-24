@@ -448,11 +448,15 @@ function setComposerType(type){
   if(type==='GROUP'){const opts=upcomingEvents().map(e=>`<option value="${e.id}">${e.date.slice(5).replace('-','.')} · ${e.title}</option>`).join('');composerFields.innerHTML=`<div class="inputgroup"><label>대회 선택</label><select id="composeGroupEvent" class="select">${opts}</select></div><div class="type-hint">현재 참석자로 조편성을 미리 만들 수 있습니다. 마감 이후에는 참석 회원을 기준으로 자동 생성됩니다.</div><button class="btn primary full" onclick="submitEventComposer()">조편성 화면으로 이동</button>`}
 }
 function updateDeadlinePreview(){if(typeof composeDate==='undefined'||!composeDate.value)return;composeDeadline.value=deadlineForDate(composeDate.value)}
-function submitEventComposer(){
+async function submitEventComposer(){
   const type=composerType.value;
   if(type==='NOTICE'){
+    if(!isAdmin())return;
     const title=composeTitle.value.trim(),content=composeContent.value.trim();if(!title||!content){alert('제목과 내용을 입력해 주세요.');return}
-    const a=getNotices();a.push({id:`notice-${Date.now()}`,title,content,author:currentUser.name,createdAt:new Date().toISOString()});saveNotices(a);closeModal();eventMode='NOTICE';render('event');return;
+    if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
+    const {error}=await hfSupabase.from('club_notices').insert({title,content,published:true,pinned:false,author_member_id:currentUser.dbId});
+    if(error){alert(error.message);return}
+    await loadSupabaseNotices();closeModal();eventMode='NOTICE';render('event');return;
   }
   if(type==='SCHEDULE'){
     const title=composeTitle.value.trim(),date=composeDate.value,time=composeTime.value,location=composeLocation.value.trim(),courseName=(document.getElementById('composeCourse')?.value||'').trim();if(!title||!date||!time||!location){alert('대회명, 날짜, 시간, 장소를 모두 입력해 주세요.');return}
@@ -838,7 +842,7 @@ function openModal(html){modal.classList.remove('hidden');sheet.innerHTML=`<div 
 
 // Supabase Auth is the source of truth for sign-in and approval actions.
 function isMasterAdmin(){return normalizePhone(currentUser?.phone)==='01035504581'&&currentUser?.role==='PRIMARY_ADMIN'}
-function isAdmin(){return isMasterAdmin()}
+function isAdmin(){return !!currentUser&&['PRIMARY_ADMIN','ASSISTANT_ADMIN'].includes(currentUser.role)}
 async function loadSupabaseScoreEvents(){
   if(!hfSupabase||!currentUser)return;
   const [{data:events},{data:scores},{data:directory}]=await Promise.all([
