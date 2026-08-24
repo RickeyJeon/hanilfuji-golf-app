@@ -46,7 +46,8 @@
   window.submitEventComposer=async function(){
     const type=window.composerType?.value;
     if(type!=='NOTICE')return originalSubmit();
-    const admin=!!window.currentUser&&(window.currentUser.role==='PRIMARY_ADMIN'||window.currentUser.role==='ASSISTANT_ADMIN');
+    const role=String(window.currentUser?.role||'').toUpperCase();
+    const admin=typeof window.isAdmin==='function'?window.isAdmin():['PRIMARY_ADMIN','ASSISTANT_ADMIN'].includes(role);
     if(!admin){alert('관리자 권한을 확인할 수 없습니다.');return}
     const title=document.getElementById('composeTitle')?.value.trim();
     const content=document.getElementById('composeContent')?.value.trim();
