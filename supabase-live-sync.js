@@ -42,22 +42,9 @@
     finally{syncing=false}
   }
 
-  async function pushScoresToSupabase(){
-    if(!isAdmin()||typeof window.syncLegacyDataToSupabase!=='function'||syncing)return;
-    const current=readLocal();
-    if(!current||current===lastLocal)return;
-    syncing=true;
-    try{
-      await window.syncLegacyDataToSupabase();
-      lastLocal=current;
-    }catch(e){console.warn('[Supabase] score push failed',e)}
-    finally{syncing=false}
-  }
-
-  async function tick(){
+  // Legacy localStorage is a cache only; never push it back to Production automatically.\n  async function pushScoresToSupabase(){return;}\n\n  async function tick(){
     if(!window.currentUser||!db())return;
-    if(isAdmin())await pushScoresToSupabase();
-    else await pullScoresToLocal();
+    await pullScoresToLocal();
   }
 
   window.addEventListener('load',()=>{
