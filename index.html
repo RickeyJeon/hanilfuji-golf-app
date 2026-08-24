@@ -910,7 +910,7 @@ async function loginWithLoading(){
   currentUser={id:legacyMember?.id||member.id,dbId:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
   await loadSupabaseScoreEvents();
   await loadSupabaseNotices();
-  if(isMasterAdmin())await syncLegacyDataToSupabase();
+  // Supabase is the source of truth; never auto-restore legacy localStorage scores on login.
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
   await enterApp();
