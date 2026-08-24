@@ -191,11 +191,18 @@ function getClubEvents(){
 }
 function saveClubEvents(events){localStorage.setItem('hf_club_events',JSON.stringify(events))}
 function getNotices(){
+  if(dbNotices!==null)return dbNotices;
   try{const raw=localStorage.getItem('hf_notices');if(raw)return JSON.parse(raw)}catch(e){}
   const defaults=[
     {id:'notice-1',title:'8월 스크린대회 안내',content:'8월 정기 스크린 골프대회 안내입니다. HOME에서 참석 여부와 식사 여부를 선택해 주세요.',author:'전재현',createdAt:'2026-08-14T09:00:00'},
     {id:'notice-2',title:'하반기 필드 라운딩 일정 공지',content:'하반기 필드 라운딩 일정은 EVENT > 일정에서 확인할 수 있습니다.',author:'운영진',createdAt:'2026-08-05T09:00:00'}
   ];localStorage.setItem('hf_notices',JSON.stringify(defaults));return defaults;
+}
+async function loadSupabaseNotices(){
+  if(!hfSupabase||!currentUser)return;
+  const {data,error}=await hfSupabase.from('club_notices').select('id,title,content,published,pinned,author_member_id,created_at,updated_at,image_path').eq('published',true).order('pinned',{ascending:false}).order('created_at',{ascending:false});
+  if(error){console.error('Supabase notices load failed',error);dbNotices=[];return}
+  dbNotices=(data||[]).map(item=>({id:item.id,title:item.title,content:item.content,author:item.author_member_id===currentUser.dbId?currentUser.name:'운영진',createdAt:item.created_at,updatedAt:item.updated_at,pinned:!!item.pinned,imagePath:item.image_path||null}));
 }
 function saveNotices(v){localStorage.setItem('hf_notices',JSON.stringify(v))}
 function formatShortDate(v){const d=new Date(v);return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`}
@@ -890,6 +897,7 @@ async function loginWithLoading(){
   const legacyMember=members.find((item)=>item.phone===member.phone_e164);
   currentUser={id:legacyMember?.id||member.id,dbId:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
   await loadSupabaseScoreEvents();
+  await loadSupabaseNotices();
   if(isMasterAdmin())await syncLegacyDataToSupabase();
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
