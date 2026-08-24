@@ -399,7 +399,7 @@ function renderEventNotices(){
   return rows.map(n=>`<div class="room-card notice-card" onclick="openNotice('${n.id}')"><div class="notice-head"><span class="notice-tag">NOTICE</span><div class="notice-title">${n.title}</div><span class="chev">›</span></div><div class="notice-meta">${formatShortDate(n.createdAt)} · ${n.author}</div></div>`).join('');
 }
 function renderEventSchedule(){
-  const events=getClubEvents().slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  const events=(isAdmin()?getClubEvents():getClubEvents().filter(e=>!isEventEnded(e))).slice().sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
   if(!events.length)return `<div class="card"><div class="empty">등록된 일정이 없습니다.</div></div>`;
   return events.map(e=>{
     const c=eventCounts(e),ended=isEventEnded(e),kind=e.type==='FIELD'?'필드':'스크린';
