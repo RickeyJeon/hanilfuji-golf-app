@@ -363,7 +363,9 @@ function renderHomeNotices(){
 }
 function openNotice(id){
   const n=getNotices().find(x=>x.id===id);if(!n)return;
-  openModal(`<div class="detail-head"><div><h3>${n.title}</h3><div class="small">${formatShortDate(n.createdAt)} · ${n.author}</div></div>${isAdmin()?`<div style="display:flex;gap:6px"><button class="edit-mini" onclick="editNotice('${n.id}')">수정</button><button class="edit-mini" style="color:#b42318;border-color:#f1b7b1" onclick="deleteNotice('${n.id}')">삭제</button></div>`:''}</div><div class="divider"></div><div style="font-size:13px;line-height:1.7;white-space:pre-line">${n.content}</div>`)
+  const imageUrl=n.imagePath?hfSupabase.storage.from('event-notices').getPublicUrl(n.imagePath).data.publicUrl:'';
+  const imageHtml=imageUrl?'<img src="'+imageUrl+'" alt="공지 첨부 이미지" style="display:block;width:100%;max-height:420px;object-fit:contain;border-radius:14px;margin-bottom:12px">':'';
+  openModal(`<div class="detail-head"><div><h3>${n.title}</h3><div class="small">${formatShortDate(n.createdAt)} · ${n.author}</div></div>${isAdmin()?`<div style="display:flex;gap:6px"><button class="edit-mini" onclick="editNotice('${n.id}')">수정</button><button class="edit-mini" style="color:#b42318;border-color:#f1b7b1" onclick="deleteNotice('${n.id}')">삭제</button></div>`:''}</div><div class="divider"></div>${imageHtml}<div style="font-size:13px;line-height:1.7;white-space:pre-line">${n.content}</div>`)
 }
 
 function editNotice(id){
@@ -376,6 +378,7 @@ async function saveNoticeEdit(id){
   if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
   const {error}=await hfSupabase.from('club_notices').update({title,content,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){alert(error.message);return}
+  if(n.imagePath){const {error:storageError}=await hfSupabase.storage.from('event-notices').remove([n.imagePath]);if(storageError)console.warn('Notice image cleanup failed',storageError)}
   await loadSupabaseNotices();closeModal();render(currentPage);
 }
 
