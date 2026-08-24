@@ -163,7 +163,7 @@ function icon(name){
 const members=[
 ['지용훈','01035839943','재무관리사업부','전무',''],['이재훈','01036574953','재무관리사업부','부장',''],['김도현','01087509179','재무관리사업부','과장','아!!도프로치'],['신동욱','01087908487','재무관리사업부','주임',''],['이경태','01087908790','미래전략부','상무',''],['김명덕','01032047908','에너지 사업부','차장',''],['이재철','01056204587','부품사업부','부장',''],['박효지','01044005403','부품사업부','차장',''],['박정호','01093207594','부품사업부','과장',''],['한경훈','01030682686','부품사업부','주임',''],['김성수','01094028552','엔진사업부','부장',''],['권해석','01026432090','엔진사업부','차장',''],['이재환','01092331737','선용사업부','부장',''],['박원식','01035008079','국내사업부','부장',''],['윤지용','01075226872','국내사업부','과장',''],['이동립','01039246262','국내사업부','과장',''],['하창진','01024427571','국내사업부','과장',''],['최우진','01085120340','F&B사업부','과장','후지최회장'],['신민서','01098971123','F&B사업부','주임',''],['박문성','01076361648','F&B사업부','사원',''],['전재현','01035504581','마린국제사업부','대리','후지전총무'],['최성묵','01067691175','마린물류사업부','차장',''],['송기한','01043436701','선용물류사업부','대리',''],['김남훈','01091678759','마린국제사업부','이사',''],['윤수지','01051310799','마린국제사업부','과장',''],['정원우','01075785393','마린국제사업부','이사','']
 ].map((m,i)=>({id:i+1,name:m[0],phone:m[1],dept:m[2],position:m[3],nick:m[4],company:i<20?'한일후지코리아(주)':'(주)후지글로벌로지스틱',role:m[0]==='전재현'?'PRIMARY_ADMIN':'USER',status:'ACTIVE'}));
-let currentUser=null, dbNotices=null, currentPage='home', recordType='SCREEN', rankingMode='ANNUAL', rankingMonth=8, rankingYear=new Date().getFullYear(), averageType='SCREEN', eventMode='NOTICE', groupEventId=null, dbScoreEvents=null;
+let currentUser=null, dbNotices=null, dbClubEvents=null, currentPage='home', recordType='SCREEN', rankingMode='ANNUAL', rankingMonth=8, rankingYear=new Date().getFullYear(), averageType='SCREEN', eventMode='NOTICE', groupEventId=null, dbScoreEvents=null;
 function nameOf(m){return m.name+(m.nick?` [${m.nick}]`:'')}
 function normalizePhone(s){return (s||'').replace(/\D/g,'')}
 function login(){const id=normalizePhone(loginId.value), pw=loginPw.value;const m=members.find(x=>x.phone===id);if(!m||m.status==='INACTIVE'||pw!==(localStorage.getItem('pw_'+id)||id.slice(-8))){alert('휴대폰 번호 또는 비밀번호가 올바르지 않습니다.');return}currentUser=m;if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');enterApp()}
@@ -175,6 +175,8 @@ window.addEventListener('popstate',()=>{if(!backGuardArmed||allowBackExit||!curr
 function go(p,el){document.querySelectorAll('.navitem').forEach(x=>x.classList.remove('active'));(el||document.querySelector(`[data-page="${p}"]`))?.classList.add('active');render(p);window.scrollTo({top:0,behavior:'smooth'})}
 function render(p){currentPage=p;page.innerHTML=({home:homePage,event:eventPage,ranking:rankingPage,record:recordPage,more:morePage}[p]||homePage)()}
 function getClubEvents(){
+  if(dbClubEvents!==null)return dbClubEvents;
+
   try{
     const raw=localStorage.getItem('hf_club_events');
     if(raw)return JSON.parse(raw);
@@ -203,6 +205,28 @@ async function loadSupabaseNotices(){
   const {data,error}=await hfSupabase.from('club_notices').select('id,title,content,published,pinned,author_member_id,created_at,updated_at,image_path').eq('published',true).order('pinned',{ascending:false}).order('created_at',{ascending:false});
   if(error){console.error('Supabase notices load failed',error);dbNotices=[];return}
   dbNotices=(data||[]).map(item=>({id:item.id,title:item.title,content:item.content,author:item.author_member_id===currentUser.dbId?currentUser.name:'운영진',createdAt:item.created_at,updatedAt:item.updated_at,pinned:!!item.pinned,imagePath:item.image_path||null}));
+}
+async function loadSupabaseClubEvents(){
+  if(!hfSupabase||!currentUser)return;
+  const [{data:events,error:eventError},{data:responses,error:responseError},{data:directory,error:directoryError}]=await Promise.all([
+    hfSupabase.from('club_events').select('id,legacy_key,title,description,event_type,event_status,venue_name,venue_address,course_name,starts_at,ends_at,attendance_deadline,published').eq('published',true).order('starts_at',{ascending:true}),
+    hfSupabase.from('event_attendance_responses').select('event_id,member_id,attendance,meal'),
+    hfSupabase.from('member_score_directory').select('id,phone_e164')
+  ]);
+  if(eventError||responseError||directoryError){console.error('Supabase events load failed',eventError||responseError||directoryError);dbClubEvents=[];return}
+  const legacyIdByDbId=new Map((directory||[]).map(item=>[item.id,members.find(member=>member.phone===item.phone_e164)?.id]).filter(([,id])=>id!==undefined));
+  const responseByEvent=new Map();
+  (responses||[]).forEach(item=>{
+    const memberId=legacyIdByDbId.get(item.member_id);if(memberId===undefined)return;
+    const votes=responseByEvent.get(item.event_id)||{};
+    votes[memberId]={attendance:String(item.attendance||'').toUpperCase(),meal:item.meal==='meal'?'MEAL':item.meal==='no_meal'?'NO_MEAL':null};
+    responseByEvent.set(item.event_id,votes);
+  });
+  const localDateTime=value=>value?new Date(value).toLocaleString('sv-SE',{timeZone:'Asia/Seoul',hour12:false}).slice(0,16):'';
+  dbClubEvents=(events||[]).map(event=>{
+    const start=localDateTime(event.starts_at),end=localDateTime(event.ends_at),deadline=localDateTime(event.attendance_deadline);
+    return {id:event.id,legacyKey:event.legacy_key||event.id,title:event.title,description:event.description||'',type:String(event.event_type||'screen').toUpperCase(),status:String(event.event_status||'draft').toUpperCase(),date:start.slice(0,10),time:start.slice(11,16),endDate:end.slice(0,10),endTime:end.slice(11,16),location:event.venue_name||'',address:event.venue_address||'',courseName:event.course_name||'',deadline,votes:responseByEvent.get(event.id)||{}};
+  });
 }
 function saveNotices(v){localStorage.setItem('hf_notices',JSON.stringify(v))}
 function formatShortDate(v){const d=new Date(v);return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`}
@@ -910,6 +934,7 @@ async function loginWithLoading(){
   currentUser={id:legacyMember?.id||member.id,dbId:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
   await loadSupabaseScoreEvents();
   await loadSupabaseNotices();
+  await loadSupabaseClubEvents();
   // Supabase is the source of truth; never auto-restore legacy localStorage scores on login.
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
