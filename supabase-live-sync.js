@@ -7,6 +7,60 @@
   let sharedChannel=null;
   let sharedSubscribing=false;
   const shownNotificationKeys=new Set();
+  const PUSH_PUBLIC_KEY=window.HF_PUSH_PUBLIC_KEY||'';
+
+  function pushKeyBytes(value){
+    const base64=(value||'').replace(/-/g,'+').replace(/_/g,'/');
+    const padded=base64+'='.repeat((4-base64.length%4)%4);
+    const raw=atob(padded);
+    return Uint8Array.from(raw,c=>c.charCodeAt(0));
+  }
+
+  async function getPushServiceWorker(){
+    if(!('serviceWorker' in navigator))throw new Error('이 브라우저는 백그라운드 알림을 지원하지 않습니다.');
+    if(window.hfServiceWorkerRegistration)return window.hfServiceWorkerRegistration;
+    window.hfServiceWorkerRegistration=await navigator.serviceWorker.register('./sw.js');
+    return window.hfServiceWorkerRegistration;
+  }
+
+  window.hfRegisterPushSubscription=async function(){
+    if(!window.currentUser?.dbId)throw new Error('회원 정보를 확인할 수 없습니다.');
+    if(!('PushManager' in window))throw new Error('이 브라우저는 백그라운드 알림을 지원하지 않습니다.');
+    if(!('Notification' in window)||Notification.permission!=='granted')throw new Error('먼저 이 사이트의 알림 권한을 허용해 주세요.');
+    const registration=await getPushServiceWorker();
+    let subscription=await registration.pushManager.getSubscription();
+    if(!subscription){
+      const options={userVisibleOnly:true};
+      if(PUSH_PUBLIC_KEY)options.applicationServerKey=pushKeyBytes(PUSH_PUBLIC_KEY);
+      subscription=await registration.pushManager.subscribe(options);
+    }
+    const json=subscription.toJSON();
+    const endpoint=json.endpoint||subscription.endpoint;
+    const p256dh=json.keys?.p256dh;
+    const auth=json.keys?.auth;
+    if(!endpoint||!p256dh||!auth)throw new Error('기기 알림 구독 정보를 읽을 수 없습니다.');
+    const {error}=await db().from('push_subscriptions').upsert({
+      member_id:window.currentUser.dbId,
+      endpoint,
+      p256dh,
+      auth,
+      user_agent:navigator.userAgent
+    },{onConflict:'member_id,endpoint'});
+    if(error)throw error;
+    return subscription;
+  };
+
+  window.hfRemovePushSubscription=async function(){
+    if(!('serviceWorker' in navigator)||!window.currentUser?.dbId||!db())return;
+    const registration=await getPushServiceWorker();
+    const subscription=await registration.pushManager.getSubscription();
+    if(!subscription)return;
+    const endpoint=subscription.endpoint;
+    await subscription.unsubscribe();
+    const {error}=await db().from('push_subscriptions').delete().eq('member_id',window.currentUser.dbId).eq('endpoint',endpoint);
+    if(error)throw error;
+  };
+
 
   window.hfRequestNotificationPermission=async function(){
     if(!('Notification' in window))throw new Error('이 브라우저는 시스템 알림을 지원하지 않습니다.');
