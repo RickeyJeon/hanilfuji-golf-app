@@ -62,6 +62,16 @@
   };
 
 
+  window.hfSendPush=async function({notificationType,sourceId,title,body}={}){
+    if(!db()||!window.currentUser?.dbId)return {skipped:true};
+    const {data:{session}}=await db().auth.getSession();
+    if(!session)return {skipped:true};
+    const {data,error}=await db().functions.invoke('send-push',{body:{notification_type:notificationType,source_id:sourceId,title,body}});
+    if(error)throw error;
+    if(data?.ok===false)throw new Error(data.error||'Push 발송에 실패했습니다.');
+    return data||{ok:true};
+  };
+
   window.hfRequestNotificationPermission=async function(){
     if(!('Notification' in window))throw new Error('이 브라우저는 시스템 알림을 지원하지 않습니다.');
     if(Notification.permission==='granted')return 'granted';
