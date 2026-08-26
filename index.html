@@ -957,6 +957,7 @@ async function loginWithLoading(){
   const legacyMember=members.find((item)=>item.phone===member.phone_e164);
   currentUser={id:legacyMember?.id||member.id,dbId:member.id,name:member.full_name,nick:memberSettings?.nickname||'',phone:member.phone_e164,company:member.company_name,dept:member.department_name||'',position:member.position_title||'',role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',status:member.status==='paused'?'PAUSED':'ACTIVE',email:member.email||''};
   window.currentUser=currentUser;
+  currentUser.mustChangePassword=!!member.must_change_password;
   await loadSupabaseScoreEvents();
   await loadSupabaseNotices();
   await loadSupabaseClubEvents();
@@ -964,7 +965,7 @@ async function loginWithLoading(){
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
   await enterApp();
-  if(member.must_change_password)showRequiredPasswordChange();
+  if(currentUser.mustChangePassword){if(typeof window.showForcedPasswordChange==='function')window.showForcedPasswordChange();else showRequiredPasswordChange();}
 }
 function setLoginLoading(loading,message='회원 정보와 최신 데이터를 확인하고 있습니다.'){const overlay=document.getElementById('loginLoading'),messageEl=document.getElementById('loginLoadingMessage'),button=document.querySelector('#loginView button[onclick="login()"]');if(messageEl)messageEl.textContent=message;if(overlay){overlay.classList.toggle('hidden',!loading);overlay.setAttribute('aria-busy',loading?'true':'false')}if(button){button.disabled=loading;button.textContent=loading?'확인 중...':'로그인'}}async function login(){setLoginLoading(true);try{return await loginWithLoading()}finally{setLoginLoading(false)}}async function enterApp(){loginView.classList.add('hidden');appView.classList.remove('hidden');render('home');armMobileBackGuard();await showPendingSignupApprovals()}
 async function logout(){await hfSupabase.auth.signOut();localStorage.removeItem('autoUser');currentUser=null;window.currentUser=null;appView.classList.add('hidden');loginView.classList.remove('hidden')}
@@ -985,12 +986,13 @@ async function saveRequiredPassword(){
   const next=document.getElementById('requiredNewPassword')?.value||'',confirmValue=document.getElementById('requiredNewPasswordConfirm')?.value||'';
   if(next.length<8){alert('새 비밀번호는 8자 이상 입력해 주세요.');return}
   if(next!==confirmValue){alert('새 비밀번호가 일치하지 않습니다.');return}
-  const {error:authError}=await hfSupabase.auth.updateUser({password:next});
-  if(authError){alert(authError.message);return}
-  const memberId=await getCurrentDbMemberId();if(!memberId){alert('비밀번호는 변경됐지만 회원 DB 연결을 확인할 수 없습니다.');return}
-  const {error:dbError}=await hfSupabase.from('club_members').update({must_change_password:false}).eq('id',memberId);
-  if(dbError){alert(dbError.message);return}
-  closeModal();alert('새 비밀번호가 저장되었습니다. 다음 로그인부터 새 비밀번호를 사용하세요.');
+  try{
+    const {data:result,error:fnError}=await hfSupabase.functions.invoke('complete-password-change',{body:{password:next}});
+    if(fnError)throw fnError;
+    if(!result?.ok)throw new Error(result?.error||'비밀번호 저장에 실패했습니다.');
+    currentUser.mustChangePassword=false;
+    closeModal();alert('새 비밀번호가 저장되었습니다. 다음 로그인부터 새 비밀번호를 사용하세요.');
+  }catch(e){alert(`비밀번호 저장 실패: ${e?.message||e}`)}
 }
 function toggleTheme(){let d=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=d?'':'dark';localStorage.setItem('theme',d?'light':'dark')}
 function setupPasswordVisibility(){document.querySelectorAll('input[type="password"]').forEach(input=>{if(input.dataset.visibilityReady)return;input.dataset.visibilityReady='1';const button=document.createElement('button');button.type='button';button.textContent='◉';button.setAttribute('aria-label','비밀번호 표시');button.style.cssText='position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:16px;padding:7px;cursor:pointer';const wrap=document.createElement('span');wrap.style.cssText='position:relative;display:block';input.parentNode.insertBefore(wrap,input);wrap.appendChild(input);wrap.appendChild(button);button.onclick=()=>{const visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'◉':'◎';button.setAttribute('aria-label',visible?'비밀번호 표시':'비밀번호 숨기기')}})}
