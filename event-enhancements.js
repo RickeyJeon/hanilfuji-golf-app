@@ -105,12 +105,14 @@
       if(file)path=await uploadImage(file);
       const {data,error}=await db().from('club_notices').insert({title,content,published:true,pinned:false,author_member_id:memberId,image_path:path}).select('id,title,content,created_at,updated_at,image_path').single();
       if(error)throw error;
+      let pushResult=null;
       try{
-        if(typeof window.hfSendPush==='function')await window.hfSendPush({notificationType:'notice',sourceId:data.id,title:'새 공지: '+data.title,body:content});
+        if(typeof window.hfSendPush==='function')pushResult=await window.hfSendPush({notificationType:'notice',sourceId:data.id,title:'새 공지: '+data.title,body:content});
+        console.info('[EVENT] notice push result',pushResult);
       }catch(pushError){console.warn('[EVENT] notice push failed',pushError)}
       const n={id:data.id,title:data.title,content:data.content,author:window.currentUser.name,createdAt:data.created_at,updatedAt:data.updated_at,imagePath:data.image_path||null};
       const next=[n,...rows().filter(x=>x.id!==n.id)];cache(next);window.hfEventDbNotices=next;
-      closeModal();window.eventMode='NOTICE';render('event');await syncNotices();alert('공지 등록이 완료되었습니다.');
+      closeModal();window.eventMode='NOTICE';render('event');await syncNotices();alert('공지 등록이 완료되었습니다.'+(pushResult&&pushResult.target_count>0&&pushResult.sent===0?'\n알림 발송은 실패했지만 공지는 저장되었습니다. 관리자 콘솔에서 발송 상태를 확인해 주세요.':''));
     }catch(e){if(path)await removeImage(path).catch(()=>{});alert('공지 등록에 실패했습니다.\n'+(e?.message||e));}
     finally{if(button){button.disabled=false;button.textContent='공지 등록'}}
   };
