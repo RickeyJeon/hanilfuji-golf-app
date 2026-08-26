@@ -516,8 +516,11 @@ async function submitEventComposer(){
     const title=composeTitle.value.trim(),date=composeDate.value,time=composeTime.value,location=composeLocation.value.trim(),courseName=(document.getElementById('composeCourse')?.value||'').trim();if(!title||!date||!time||!location){alert('대회명, 날짜, 시간, 장소를 모두 입력해 주세요.');return}
     if(!hfSupabase||!currentUser?.dbId){alert('Supabase 회원 연결을 확인할 수 없습니다.');return}
     const deadline=composeDeadline.value||deadlineForDate(date),startIso=new Date(`${date}T${time}:00+09:00`).toISOString(),deadlineIso=new Date(`${deadline}:00+09:00`).toISOString();
-    const {error}=await hfSupabase.from('club_events').insert({title,event_type:String(composeEventType.value||'SCREEN').toLowerCase(),event_status:'published',venue_name:location,course_name:courseName||null,starts_at:startIso,attendance_deadline:deadlineIso,published:true,created_by_member_id:currentUser.dbId});
+    const {data:eventRow,error}=await hfSupabase.from('club_events').insert({title,event_type:String(composeEventType.value||'SCREEN').toLowerCase(),event_status:'published',venue_name:location,course_name:courseName||null,starts_at:startIso,attendance_deadline:deadlineIso,published:true,created_by_member_id:currentUser.dbId}).select('id,title,starts_at').single();
     if(error){alert(error.message);return}
+    try{
+      if(typeof window.hfSendPush==='function')await window.hfSendPush({notificationType:'event',sourceId:eventRow?.id,title:'새 일정: '+title,body:date+' '+time+' · '+location});
+    }catch(pushError){console.warn('[APP] event push failed',pushError)}
     await loadSupabaseClubEvents();closeModal();eventMode='SCHEDULE';render('event');return;
   }
   const id=composeGroupEvent.value;closeModal();groupEventId=id;eventMode='GROUP';const e=getClubEvents().find(x=>x.id===id);if(e&&!getEventGroups()[id])buildGroupsForEvent(e,true);render('event');
