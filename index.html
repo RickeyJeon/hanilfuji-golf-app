@@ -1001,6 +1001,16 @@ function setupPasswordVisibility(){document.querySelectorAll('input[type="passwo
 (function init(){seedV19BackupIfNeeded();restoreMembers();if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';let saved=localStorage.getItem('savedId');if(saved){loginId.value=saved;rememberId.checked=true}localStorage.removeItem('autoUser');autoLogin.addEventListener('change',()=>{if(autoLogin.checked)rememberId.checked=true})})();
 setupPasswordVisibility();
 </script>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator))return;
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js')
+      .then(function(reg){window.hfServiceWorkerRegistration=reg})
+      .catch(function(error){console.warn('[HANIL-FUJI] service worker registration failed',error)});
+  });
+})();
+</script>
 <script src="./more-enhancements.js"></script>
 <script src="./password-enhancements.js"></script>
 <script src="./event-enhancements.js"></script>
