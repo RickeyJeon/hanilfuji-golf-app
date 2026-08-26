@@ -23,7 +23,29 @@ window.saveNotificationSetting=async function(value){
   if(error){alert('알림 설정 저장에 실패했습니다.\\n'+error.message);return}
   currentUser.notifyEventUpdates=!!value;closeModal();render('more')
 };
-window.notificationSettings=function(){const on=currentUser?.notifyEventUpdates!==false;openModal(`<h3>🔔 알림 설정</h3><p class="small" style="line-height:1.55">공지 · 일정 · 조편성 · 경기결과</p><div class="toggle-row" style="border-bottom:0"><div><strong>알림 받기</strong><div class="small">${on?'알림을 받습니다':'알림을 받지 않습니다'}</div></div><button class="btn ${on?'primary':'ghost'}" onclick="saveNotificationSetting(${!on})">${on?'ON':'OFF'}</button></div>`) };
+window.enableDeviceNotifications=async function(){
+  if(!currentUser?.dbId){alert('회원 정보 연결을 확인할 수 없습니다.');return}
+  try{
+    if(typeof window.hfRequestNotificationPermission!=='function')throw new Error('알림 기능을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    await window.hfRequestNotificationPermission();
+    if(typeof window.hfRegisterPushSubscription!=='function')throw new Error('기기 알림 연결 기능을 불러오지 못했습니다. 앱을 새로고침해 주세요.');
+    await window.hfRegisterPushSubscription();
+    const{error}=await hfSupabase.from('member_settings').upsert({member_id:currentUser.dbId,notify_event_updates:true},{onConflict:'member_id'});
+    if(error)throw error;
+    currentUser.notifyEventUpdates=true;
+    closeModal();render('more');
+    alert('이 휴대폰의 알림 연결이 완료되었습니다.');
+  }catch(e){alert(e?.message||e)}
+};
+window.notificationSettings=function(){
+  const on=currentUser?.notifyEventUpdates!==false;
+  const permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
+  const permissionText=permission==='granted'?'브라우저 권한 허용됨':permission==='denied'?'브라우저에서 차단됨':'아직 이 휴대폰 권한이 허용되지 않음';
+  const deviceAction=permission==='denied'
+    ? '<p class="small" style="line-height:1.55;color:#b44">Chrome 사이트 설정에서 알림을 허용한 뒤 다시 시도해 주세요.</p>'
+    : '<button class="btn primary full" onclick="enableDeviceNotifications()">📲 이 휴대폰 알림 연결</button>';
+  openModal(`<h3>🔔 알림 설정</h3><p class="small" style="line-height:1.55">공지 · 일정 · 조편성 · 경기결과</p><div class="toggle-row" style="border-bottom:0"><div><strong>알림 받기</strong><div class="small">${on?'전체 알림 설정 ON':'알림을 받지 않습니다'}</div></div><button class="btn ${on?'primary':'ghost'}" onclick="saveNotificationSetting(${!on})">${on?'ON':'OFF'}</button></div><div class="small" style="margin:12px 0 8px">이 기기 상태: ${permissionText}</div>${on?deviceAction:''}`);
+};
 window.openPwaInstall=function(){let body='';if(standalone())body='<div class="pill">✓ 이미 앱으로 실행 중입니다.</div>';else if(deferredInstallPrompt)body='<p class="small">Android · Chrome에서 브라우저 대신 앱처럼 설치할 수 있습니다.</p><button class="btn primary full" onclick="installPwa()">📲 앱 설치</button>';else if(iosSafari())body='<p class="small" style="line-height:1.65"><b>iPhone · Safari</b><br>① Safari 하단 <b>공유</b> 버튼<br>② <b>홈 화면에 추가</b> 선택<br>③ 오른쪽 위 <b>추가</b> 선택</p>';else body='<p class="small">Chrome 메뉴에서 <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 선택해 주세요.</p>';openModal(`<h3>📲 홈 화면에 앱 설치</h3><p class="small">모바일에서는 브라우저 대신 앱처럼 실행할 수 있습니다.</p>${body}`)};
 window.installPwa=async function(){if(!deferredInstallPrompt){openPwaInstall();return}const p=deferredInstallPrompt;deferredInstallPrompt=null;try{await p.prompt();await p.userChoice}catch(e){console.warn('[HANIL-FUJI] install prompt failed',e)}};
 window.adminApprovalPage=function(){if(!currentUser||!['PRIMARY_ADMIN','ASSISTANT_ADMIN'].includes(currentUser.role)){alert('관리자 권한이 없습니다.');return}window.location.href='./admin-approvals.html'};
