@@ -130,7 +130,7 @@ body{min-height:100vh}.app{max-width:520px;margin:0 auto;min-height:100vh;backgr
     <button class="navitem" data-page="event" onclick="go('event',this)"><span class="ico">◷</span>EVENT</button>
     <button class="navitem" data-page="ranking" onclick="go('ranking',this)"><span class="ico">🏆</span>RANKING</button>
     <button class="navitem" data-page="record" onclick="go('record',this)"><span class="ico">⌁</span>RECORD</button>
-    <button class="navitem" data-page="more" onclick="go('more',this)"><span class="ico">☰</span>MORE</button>
+    <button class="navitem" data-page="more" onclick="go('more',this)"><span class="ico">⚙</span>SETTING</button>
   </nav>
 </div>
 <div id="modal" class="overlay hidden" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
@@ -160,7 +160,7 @@ function icon(name){
   };
   return icons[name]||'';
 }
-function enhanceBottomNavIcons(){const map={home:'home',event:'calendar',ranking:'trophy',record:'chart',more:'user'};document.querySelectorAll('.bottomnav .navitem').forEach(button=>{const target=button.querySelector('.ico'),name=map[button.dataset.page];if(target&&name)target.innerHTML=icon(name)})}
+function enhanceBottomNavIcons(){const map={home:'home',event:'calendar',ranking:'trophy',record:'chart',more:'settings'};document.querySelectorAll('.bottomnav .navitem').forEach(button=>{const target=button.querySelector('.ico'),name=map[button.dataset.page];if(target&&name)target.innerHTML=icon(name)})}
 enhanceBottomNavIcons();
 const members=[
 ['지용훈','01035839943','재무관리사업부','전무',''],['이재훈','01036574953','재무관리사업부','부장',''],['김도현','01087509179','재무관리사업부','과장','아!!도프로치'],['신동욱','01087908487','재무관리사업부','주임',''],['이경태','01087908790','미래전략부','상무',''],['김명덕','01032047908','에너지 사업부','차장',''],['이재철','01056204587','부품사업부','부장',''],['박효지','01044005403','부품사업부','차장',''],['박정호','01093207594','부품사업부','과장',''],['한경훈','01030682686','부품사업부','주임',''],['김성수','01094028552','엔진사업부','부장',''],['권해석','01026432090','엔진사업부','차장',''],['이재환','01092331737','선용사업부','부장',''],['박원식','01035008079','국내사업부','부장',''],['윤지용','01075226872','국내사업부','과장',''],['이동립','01039246262','국내사업부','과장',''],['하창진','01024427571','국내사업부','과장',''],['최우진','01085120340','F&B사업부','과장','후지최회장'],['신민서','01098971123','F&B사업부','주임',''],['박문성','01076361648','F&B사업부','사원',''],['전재현','01035504581','마린국제사업부','대리','후지전총무'],['최성묵','01067691175','마린물류사업부','차장',''],['송기한','01043436701','선용물류사업부','대리',''],['김남훈','01091678759','마린국제사업부','이사',''],['윤수지','01051310799','마린국제사업부','과장',''],['정원우','01075785393','마린국제사업부','이사','']
