@@ -1005,6 +1005,18 @@ function setupPasswordVisibility(){document.querySelectorAll('input[type="passwo
 setupPasswordVisibility();
 </script>
 <script>
+window.hfRefreshSharedData=async function(){
+  if(!window.currentUser||!window.hfSupabase)return;
+  const tasks=[];
+  if(typeof window.loadSupabaseNotices==='function')tasks.push(window.loadSupabaseNotices());
+  if(typeof window.loadSupabaseClubEvents==='function')tasks.push(window.loadSupabaseClubEvents());
+  if(typeof window.loadSupabaseScoreEvents==='function')tasks.push(window.loadSupabaseScoreEvents());
+  if(typeof window.syncClubNotices==='function')tasks.push(window.syncClubNotices());
+  await Promise.all(tasks);
+  if(typeof window.render==='function')window.render(window.currentPage||'home');
+};
+</script>
+<script>
 (function(){
   if(!('serviceWorker' in navigator))return;
   window.addEventListener('load',function(){
