@@ -7,7 +7,7 @@
   let sharedChannel=null;
   let sharedSubscribing=false;
   const shownNotificationKeys=new Set();
-  const PUSH_PUBLIC_KEY=window.HF_PUSH_PUBLIC_KEY||'';
+  const PUSH_PUBLIC_KEY=window.HF_PUSH_PUBLIC_KEY||'BCU4AL489NN-UOVOQofWt4_OHRaDU62h_YsAOtTTq4gnXhHTegDbmTxCc9Apl1gbzkcz6q1B-uYt08lQP7iKot4';
 
   function pushKeyBytes(value){
     const base64=(value||'').replace(/-/g,'+').replace(/_/g,'/');
