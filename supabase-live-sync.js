@@ -6,14 +6,38 @@
   let syncing=false;
   let sharedChannel=null;
   let sharedSubscribing=false;
+  const shownNotificationKeys=new Set();
+
+  window.hfRequestNotificationPermission=async function(){
+    if(!('Notification' in window))throw new Error('이 브라우저는 시스템 알림을 지원하지 않습니다.');
+    if(Notification.permission==='granted')return 'granted';
+    if(Notification.permission==='denied')throw new Error('브라우저 설정에서 이 사이트의 알림 권한을 허용해 주세요.');
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted')throw new Error('알림 권한이 허용되지 않았습니다.');
+    return permission;
+  };
+
+  function notificationAllowed(){return !!window.currentUser&&window.currentUser.notifyEventUpdates!==false&&'Notification' in window&&Notification.permission==='granted'}
+  function showForegroundNotification(kind,row){
+    if(!notificationAllowed()||!row||row.eventType==='DELETE')return;
+    const actorId=kind==='notice'?row.author_member_id:row.created_by_member_id;
+    if(actorId&&window.currentUser?.dbId&&String(actorId)===String(window.currentUser.dbId))return;
+    const key=kind+':'+String(row.id)+':'+String(row.updated_at||row.created_at||'');
+    if(shownNotificationKeys.has(key))return;
+    shownNotificationKeys.add(key);
+    const title=kind==='notice'?'새 공지: '+(row.title||'새 공지'):'새 일정: '+(row.title||'새 일정');
+    const body=kind==='notice'?(String(row.content||'새 공지가 등록되었습니다.').slice(0,100)):(row.starts_at?'일정이 등록되었습니다.':'새 일정이 등록되었습니다.');
+    const notification=new Notification(title,{body,tag:'hf-'+kind+'-'+String(row.id)});
+    notification.onclick=()=>{window.focus();window.eventMode=kind==='notice'?'NOTICE':'SCHEDULE';if(typeof window.go==='function')window.go('event',document.querySelector('[data-page="event"]'))};
+  }
 
   async function subscribeSharedChanges(){
     if(!db()||!window.currentUser||sharedChannel||sharedSubscribing)return;
     sharedSubscribing=true;
     try{
       sharedChannel=db().channel('hf-shared-data')
-        .on('postgres_changes',{event:'*',schema:'public',table:'club_notices'},async()=>{if(typeof window.loadSupabaseNotices==='function')await window.loadSupabaseNotices();if(typeof window.render==='function')window.render(window.currentPage||'home')})
-        .on('postgres_changes',{event:'*',schema:'public',table:'club_events'},async()=>{if(typeof window.loadSupabaseClubEvents==='function')await window.loadSupabaseClubEvents();if(typeof window.render==='function')window.render(window.currentPage||'home')})
+        .on('postgres_changes',{event:'*',schema:'public',table:'club_notices'},async(payload)=>{if(payload?.eventType==='INSERT'&&payload?.new?.published!==false)showForegroundNotification('notice',payload.new);if(typeof window.loadSupabaseNotices==='function')await window.loadSupabaseNotices();if(typeof window.render==='function')window.render(window.currentPage||'home')})
+        .on('postgres_changes',{event:'*',schema:'public',table:'club_events'},async(payload)=>{if(payload?.eventType==='INSERT'&&payload?.new?.published!==false)showForegroundNotification('event',payload.new);if(typeof window.loadSupabaseClubEvents==='function')await window.loadSupabaseClubEvents();if(typeof window.render==='function')window.render(window.currentPage||'home')})
         .on('postgres_changes',{event:'*',schema:'public',table:'event_attendance_responses'},async()=>{if(typeof window.loadSupabaseClubEvents==='function')await window.loadSupabaseClubEvents();if(typeof window.render==='function')window.render(window.currentPage||'home')})
         .subscribe();
     }catch(e){console.warn('[Supabase] realtime subscribe failed',e);sharedChannel=null}
