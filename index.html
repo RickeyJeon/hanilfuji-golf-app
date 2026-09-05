@@ -267,7 +267,7 @@ function setGroupMode(id,mode){if(!canManageGroups())return;const e=getClubEvent
 function setGroupSize(id,size){if(!canManageGroups())return;const e=getClubEvents().find(x=>x.id===id);if(!e)return;const old=getEventGroups()[id];buildGroupsForEvent(e,true,old?.groupMode||'RANDOM',size);render('event')}
 function maybeAutoBuildGroups(e){
   const all=getEventGroups();if(all[e.id])return all[e.id];
-  const now=new Date('2026-08-14T13:41:00+09:00'),dl=e.deadline?new Date(e.deadline):null;
+  const now=appNow(),dl=e.deadline?new Date(e.deadline):null;
   return dl&&now>=dl?buildGroupsForEvent(e):null;
 }
 function eventDateTime(e){return new Date(`${e.date}T${e.time||'00:00'}:00`)}
@@ -481,7 +481,22 @@ function renderEventGroups(){
 function canManageGroups(){return !!currentUser&&currentUser.role!=='USER'}
 function previewGroups(id){if(!canManageGroups()){alert('관리자만 조편성을 만들 수 있습니다.');return}const e=getClubEvents().find(x=>x.id===id);if(!e)return;buildGroupsForEvent(e,true);render('event')}
 function shuffleGroups(id){if(!canManageGroups()){alert('랜덤 섞기는 관리자만 사용할 수 있습니다.');return}const e=getClubEvents().find(x=>x.id===id);if(!e)return;if(!attendingMembers(e).length){alert('현재 참석으로 선택된 회원이 없습니다.');return}buildGroupsForEvent(e,true);render('event')}
-function confirmGroups(id){if(!canManageGroups()){alert('관리자만 조편성을 확정할 수 있습니다.');return}const all=getEventGroups();if(!all[id])return;all[id].confirmed=true;all[id].confirmedAt=new Date().toISOString();saveEventGroups(all);alert('조편성이 확정되었습니다. 이제 회원들에게 공개됩니다.');render('event')}
+async function confirmGroups(id){
+  if(!canManageGroups()){alert('관리자만 조편성을 확정할 수 있습니다.');return}
+  const all=getEventGroups(),draft=all[id];if(!draft)return;
+  if(!draft.rooms?.length){alert('조편성할 조가 없습니다.');return}
+  const confirmed={...draft,confirmed:true,confirmedAt:new Date().toISOString()};
+  try{
+    if(typeof window.hfSaveConfirmedEventGroups!=='function')throw new Error('Supabase 조편성 저장 기능을 불러오지 못했습니다. 앱을 새로 열어 다시 시도해 주세요.');
+    await window.hfSaveConfirmedEventGroups(id,confirmed);
+    all[id]=confirmed;saveEventGroups(all);
+    await window.hfLoadSupabaseEventGroups?.();
+    alert('조편성이 Supabase에 저장되었습니다. 이제 회원들에게 공개됩니다.');
+    render('event');
+  }catch(error){
+    alert('조편성 저장에 실패했습니다.\\n'+(error?.message||error));
+  }
+}
 function eventPage(){
   const admin=isAdmin();
   const body=eventMode==='NOTICE'?renderEventNotices():eventMode==='SCHEDULE'?renderEventSchedule():renderEventGroups();
@@ -966,6 +981,7 @@ async function loginWithLoading(){
   await loadSupabaseScoreEvents();
   await loadSupabaseNotices();
   await loadSupabaseClubEvents();
+  if(typeof window.hfLoadSupabaseEventGroups==='function')await window.hfLoadSupabaseEventGroups();
   // Supabase is the source of truth; never auto-restore legacy localStorage scores on login.
   if(rememberId.checked)localStorage.setItem('savedId',id);else localStorage.removeItem('savedId');
   if(autoLogin.checked)localStorage.setItem('autoUser',id);else localStorage.removeItem('autoUser');
@@ -1011,6 +1027,7 @@ window.hfRefreshSharedData=async function(){
   if(typeof window.loadSupabaseNotices==='function')tasks.push(window.loadSupabaseNotices());
   if(typeof window.loadSupabaseClubEvents==='function')tasks.push(window.loadSupabaseClubEvents());
   if(typeof window.loadSupabaseScoreEvents==='function')tasks.push(window.loadSupabaseScoreEvents());
+  if(typeof window.hfLoadSupabaseEventGroups==='function')tasks.push(window.hfLoadSupabaseEventGroups());
   if(typeof window.syncClubNotices==='function')tasks.push(window.syncClubNotices());
   await Promise.all(tasks);
   if(typeof window.render==='function')window.render(window.currentPage||'home');
