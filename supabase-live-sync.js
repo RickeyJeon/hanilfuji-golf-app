@@ -72,6 +72,94 @@
     return data||{ok:true};
   };
 
+  let groupReloadTimer=null;
+  function scheduleGroupReload(){
+    clearTimeout(groupReloadTimer);
+    groupReloadTimer=setTimeout(async()=>{
+      try{
+        if(typeof window.hfLoadSupabaseEventGroups==='function')await window.hfLoadSupabaseEventGroups();
+        if(window.currentPage==='event'&&window.eventMode==='GROUP'&&typeof window.render==='function')window.render('event');
+      }catch(error){console.warn('[Supabase] group realtime refresh failed',error)}
+    },250);
+  }
+
+  window.hfLoadSupabaseEventGroups=async function(){
+    if(!db()||!window.currentUser)return {};
+    const [{data:groups,error:groupError},{data:links,error:linkError}]=await Promise.all([
+      db().from('event_groups').select('id,event_id,title,display_order,created_by_member_id,created_at,updated_at').order('display_order',{ascending:true}),
+      db().from('event_group_members').select('group_id,member_id')
+    ]);
+    if(groupError||linkError)throw groupError||linkError;
+    const legacyByDbId=new Map((window.members||[]).filter(member=>member.dbId).map(member=>[String(member.dbId),member.id]));
+    const roomByGroupId=new Map();
+    const byEvent=new Map();
+    (groups||[]).forEach(row=>{
+      const eventKey=String(row.event_id);
+      const data=byEvent.get(eventKey)||{eventId:row.event_id,createdAt:row.created_at,confirmed:true,confirmedAt:row.updated_at,groupSize:0,groupMode:'RANDOM',rooms:[]};
+      const room={room:Number(row.display_order||data.rooms.length+1),memberIds:[]};
+      data.rooms.push(room);
+      data.groupSize=Math.max(data.groupSize,room.room);
+      byEvent.set(eventKey,data);
+      roomByGroupId.set(String(row.id),room);
+    });
+    (links||[]).forEach(link=>{
+      const room=roomByGroupId.get(String(link.group_id));
+      const legacyId=legacyByDbId.get(String(link.member_id));
+      if(room&&legacyId!==undefined)room.memberIds.push(legacyId);
+    });
+    const cache=Object.fromEntries(byEvent.entries());
+    localStorage.setItem('hf_event_groups',JSON.stringify(cache));
+    window.hfSupabaseEventGroups=cache;
+    return cache;
+  };
+
+  window.hfSaveConfirmedEventGroups=async function(eventId,groupData){
+    if(!db()||!window.currentUser?.dbId)throw new Error('회원 인증 정보를 확인할 수 없습니다.');
+    const rooms=(groupData?.rooms||[]).filter(room=>Array.isArray(room.memberIds)&&room.memberIds.length);
+    if(!rooms.length)throw new Error('저장할 조편성이 없습니다.');
+    const legacyMembers=window.members||[];
+    const dbMemberIds=[];
+    for(const room of rooms){
+      for(const legacyId of room.memberIds){
+        const member=legacyMembers.find(candidate=>String(candidate.id)===String(legacyId));
+        if(!member?.dbId)throw new Error('조편성 회원의 Supabase 연결 정보를 확인할 수 없습니다.');
+        dbMemberIds.push(String(member.dbId));
+      }
+    }
+    const {data:oldGroups,error:oldError}=await db().from('event_groups').select('id,display_order').eq('event_id',eventId).order('display_order',{ascending:true});
+    if(oldError)throw oldError;
+    const oldByOrder=new Map((oldGroups||[]).map(row=>[Number(row.display_order),row.id]));
+    const oldIds=(oldGroups||[]).map(row=>row.id);
+    if(oldIds.length){
+      const {error:memberDeleteError}=await db().from('event_group_members').delete().in('group_id',oldIds);
+      if(memberDeleteError)throw memberDeleteError;
+    }
+    const rows=rooms.map((room,index)=>({
+      id:oldByOrder.get(Number(room.room))||crypto.randomUUID(),
+      event_id:eventId,
+      title:'ROOM '+String(room.room),
+      display_order:Number(room.room)||index+1,
+      created_by_member_id:window.currentUser.dbId
+    }));
+    const keepIds=new Set(rows.map(row=>row.id));
+    const removeIds=oldIds.filter(id=>!keepIds.has(id));
+    if(removeIds.length){
+      const {error:groupDeleteError}=await db().from('event_groups').delete().in('id',removeIds);
+      if(groupDeleteError)throw groupDeleteError;
+    }
+    const {error:groupUpsertError}=await db().from('event_groups').upsert(rows,{onConflict:'id'});
+    if(groupUpsertError)throw groupUpsertError;
+    const links=rooms.flatMap((room,index)=>room.memberIds.map(legacyId=>{
+      const member=legacyMembers.find(candidate=>String(candidate.id)===String(legacyId));
+      return {group_id:rows[index].id,member_id:member.dbId};
+    }));
+    if(links.length){
+      const {error:linkInsertError}=await db().from('event_group_members').insert(links);
+      if(linkInsertError)throw linkInsertError;
+    }
+    return window.hfLoadSupabaseEventGroups();
+  };
+
   window.hfRequestNotificationPermission=async function(){
     if(!('Notification' in window))throw new Error('이 브라우저는 시스템 알림을 지원하지 않습니다.');
     if(Notification.permission==='granted')return 'granted';
@@ -103,6 +191,8 @@
         .on('postgres_changes',{event:'*',schema:'public',table:'club_notices'},async(payload)=>{if(payload?.eventType==='INSERT'&&payload?.new?.published!==false)showForegroundNotification('notice',payload.new);if(typeof window.loadSupabaseNotices==='function')await window.loadSupabaseNotices();if(typeof window.render==='function')window.render(window.currentPage||'home')})
         .on('postgres_changes',{event:'*',schema:'public',table:'club_events'},async(payload)=>{if(payload?.eventType==='INSERT'&&payload?.new?.published!==false)showForegroundNotification('event',payload.new);if(typeof window.loadSupabaseClubEvents==='function')await window.loadSupabaseClubEvents();if(typeof window.render==='function')window.render(window.currentPage||'home')})
         .on('postgres_changes',{event:'*',schema:'public',table:'event_attendance_responses'},async()=>{if(typeof window.loadSupabaseClubEvents==='function')await window.loadSupabaseClubEvents();if(typeof window.render==='function')window.render(window.currentPage||'home')})
+        .on('postgres_changes',{event:'*',schema:'public',table:'event_groups'},scheduleGroupReload)
+        .on('postgres_changes',{event:'*',schema:'public',table:'event_group_members'},scheduleGroupReload)
         .subscribe();
     }catch(e){console.warn('[Supabase] realtime subscribe failed',e);sharedChannel=null}
     finally{sharedSubscribing=false}
