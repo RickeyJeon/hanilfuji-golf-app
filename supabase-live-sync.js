@@ -78,7 +78,7 @@
     groupReloadTimer=setTimeout(async()=>{
       try{
         if(typeof window.hfLoadSupabaseEventGroups==='function')await window.hfLoadSupabaseEventGroups();
-        if(window.currentPage==='event'&&window.eventMode==='GROUP'&&typeof window.render==='function')window.render('event');
+        if(typeof window.render==='function')window.render(window.currentPage||'event');
       }catch(error){console.warn('[Supabase] group realtime refresh failed',error)}
     },250);
   }
