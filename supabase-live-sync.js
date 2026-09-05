@@ -98,7 +98,6 @@
       const data=byEvent.get(eventKey)||{eventId:row.event_id,createdAt:row.created_at,confirmed:true,confirmedAt:row.updated_at,groupSize:0,groupMode:'RANDOM',rooms:[]};
       const room={room:Number(row.display_order||data.rooms.length+1),memberIds:[]};
       data.rooms.push(room);
-      data.groupSize=Math.max(data.groupSize,room.room);
       byEvent.set(eventKey,data);
       roomByGroupId.set(String(row.id),room);
     });
@@ -107,6 +106,7 @@
       const legacyId=legacyByDbId.get(String(link.member_id));
       if(room&&legacyId!==undefined)room.memberIds.push(legacyId);
     });
+    byEvent.forEach(data=>{data.groupSize=Math.max(...data.rooms.map(room=>room.memberIds.length),0)});
     const cache=Object.fromEntries(byEvent.entries());
     localStorage.setItem('hf_event_groups',JSON.stringify(cache));
     window.hfSupabaseEventGroups=cache;
