@@ -177,7 +177,7 @@ let backGuardArmed=false,allowBackExit=false;
 function armMobileBackGuard(){if(backGuardArmed)return;try{history.pushState({hfApp:true},'',location.href);backGuardArmed=true}catch(e){}}
 window.addEventListener('popstate',()=>{if(!backGuardArmed||allowBackExit||!currentUser)return;const ok=confirm('종료하시겠습니까?');if(ok){allowBackExit=true;backGuardArmed=false;logout();setTimeout(()=>{try{history.back()}catch(e){}},0)}else{try{history.pushState({hfApp:true},'',location.href)}catch(e){}}});
 function go(p,el){document.querySelectorAll('.navitem').forEach(x=>x.classList.remove('active'));(el||document.querySelector(`[data-page="${p}"]`))?.classList.add('active');render(p);window.scrollTo({top:0,behavior:'smooth'})}
-function render(p){currentPage=p;page.innerHTML=({home:homePage,event:eventPage,ranking:rankingPage,record:recordPage,more:morePage}[p]||homePage)()}
+function render(p){window.currentPage=p;currentPage=p;page.innerHTML=({home:homePage,event:eventPage,ranking:rankingPage,record:recordPage,more:morePage}[p]||homePage)()}
 function getClubEvents(){
   if(dbClubEvents!==null)return dbClubEvents;
 
