@@ -1038,7 +1038,7 @@ window.hfRefreshSharedData=async function(){
 (function(){
   if(!('serviceWorker' in navigator))return;
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('./sw.js?v=5')
       .then(function(reg){window.hfServiceWorkerRegistration=reg})
       .catch(function(error){console.warn('[HANIL-FUJI] service worker registration failed',error)});
   });
