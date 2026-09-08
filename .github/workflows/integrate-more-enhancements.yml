@@ -20,7 +20,7 @@ jobs:
           const fs=require('fs');
           const p='index.html';
           let s=fs.readFileSync(p,'utf8');
-          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js','admin-score-enhancements.js','mobile-refresh-fix.js','admin-member-delete.js','admin-members-enhancements.js','nickname-sync.js','supabase-live-sync.js']) {
+          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js','admin-score-enhancements.js','mobile-refresh-fix.js','admin-member-delete.js','admin-members-enhancements.js','nickname-sync.js','supabase-live-sync.js','auto-login-fix.js']) {
             const tag=`<script src="./${file}"></script>`;
             if(!s.includes(tag)){
               const marker='</body>';
