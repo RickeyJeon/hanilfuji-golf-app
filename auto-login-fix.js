@@ -1,31 +1,6 @@
 (function(){
 const KEY='hf_auto_login_enabled';
-function normalizeMember(row){
-  if(!row)return null;
-  return {
-    ...row,
-    id: row.id,
-    name: row.name || row.full_name || '',
-    fullName: row.fullName || row.full_name || row.name || '',
-    full_name: row.full_name || row.name || '',
-    phone: row.phone || row.phone_e164 || '',
-    phoneE164: row.phoneE164 || row.phone_e164 || row.phone || '',
-    email: row.email || '',
-    company: row.company || row.company_name || '',
-    companyName: row.companyName || row.company_name || row.company || '',
-    dept: row.dept || row.department_name || '',
-    department: row.department || row.department_name || row.dept || '',
-    departmentName: row.departmentName || row.department_name || row.department || row.dept || '',
-    position: row.position || row.position_title || '',
-    positionTitle: row.positionTitle || row.position_title || row.position || '',
-    role: row.role || 'member',
-    status: row.status || 'active',
-    authUserId: row.authUserId || row.auth_user_id || '',
-    auth_user_id: row.auth_user_id || row.authUserId || '',
-    mustChangePassword: !!(row.mustChangePassword || row.must_change_password),
-    must_change_password: !!(row.must_change_password || row.mustChangePassword)
-  };
-}
+
 function install(){
   if(typeof window.login==='function'&&!window.login.__autoFixed){
     const oldLogin=window.login;
@@ -38,47 +13,87 @@ function install(){
     };
     window.login.__autoFixed=true;
   }
+
   if(typeof window.logout==='function'&&!window.logout.__autoFixed){
     const oldLogout=window.logout;
-    window.logout=async function(){localStorage.removeItem(KEY);return oldLogout.apply(this,arguments)};
+    window.logout=async function(){
+      localStorage.removeItem(KEY);
+      return oldLogout.apply(this,arguments);
+    };
     window.logout.__autoFixed=true;
   }
+
   const box=document.getElementById('autoLogin');
   if(box&&localStorage.getItem(KEY)==='1')box.checked=true;
 }
+
 async function restore(){
   if(localStorage.getItem(KEY)!=='1'||!window.hfSupabase?.auth)return;
+
   try{
     if(typeof window.setLoginLoading==='function')window.setLoginLoading(true,'자동 로그인 중입니다.');
-    const result=await window.hfSupabase.auth.getSession();
-    const user=result?.data?.session?.user;
-    if(!user){localStorage.removeItem(KEY);return}
-    let member=null;
+
+    const sessionResult=await window.hfSupabase.auth.getSession();
+    const authUser=sessionResult?.data?.session?.user;
+    if(!authUser){
+      localStorage.removeItem(KEY);
+      return;
+    }
+
+    const {data:member,error:memberError}=await window.hfSupabase
+      .from('club_members')
+      .select('id,full_name,email,phone_e164,company_name,department_name,position_title,role,status,must_change_password')
+      .eq('auth_user_id',authUser.id)
+      .maybeSingle();
+
+    if(memberError)throw memberError;
+    if(!member||member.status==='inactive'){
+      localStorage.removeItem(KEY);
+      await window.hfSupabase.auth.signOut();
+      return;
+    }
+
+    const {data:memberSettings}=await window.hfSupabase
+      .from('member_settings')
+      .select('nickname')
+      .eq('member_id',member.id)
+      .maybeSingle();
+
+    let legacyMember=null;
     try{
       if(typeof members!=='undefined'&&Array.isArray(members)){
-        member=members.find(m=>String(m.authUserId||m.auth_user_id||'')===String(user.id))||null;
+        legacyMember=members.find(item=>item.phone===member.phone_e164)||null;
       }
     }catch(e){}
-    if(!member){
-      const q=await window.hfSupabase.from('club_members').select('*').eq('auth_user_id',user.id).maybeSingle();
-      if(q.error)throw q.error;
-      const row=q.data;
-      if(row){
-        try{
-          if(typeof members!=='undefined'&&Array.isArray(members)){
-            member=members.find(m=>String(m.id)===String(row.id))||null;
-          }
-        }catch(e){}
-        member=member||row;
-      }
+
+    const mappedUser={
+      id:legacyMember?.id||member.id,
+      dbId:member.id,
+      name:member.full_name,
+      nick:memberSettings?.nickname||'',
+      phone:member.phone_e164,
+      company:member.company_name,
+      dept:member.department_name||'',
+      position:member.position_title||'',
+      role:member.role==='primary_admin'?'PRIMARY_ADMIN':member.role==='assistant_admin'?'ASSISTANT_ADMIN':'USER',
+      status:member.status==='paused'?'PAUSED':'ACTIVE',
+      email:member.email||'',
+      mustChangePassword:!!member.must_change_password
+    };
+
+    try{currentUser=mappedUser}catch(e){}
+    window.currentUser=mappedUser;
+
+    if(typeof window.loadSupabaseScoreEvents==='function')await window.loadSupabaseScoreEvents();
+    if(typeof window.loadSupabaseNotices==='function')await window.loadSupabaseNotices();
+    if(typeof window.loadSupabaseClubEvents==='function')await window.loadSupabaseClubEvents();
+    if(typeof window.hfRefreshSharedData==='function'){
+      try{await window.hfRefreshSharedData()}catch(e){}
     }
-    if(!member)return;
-    member=normalizeMember(member);
-    try{currentUser=member}catch(e){}
-    window.currentUser=member;
-    if(typeof window.hfRefreshSharedData==='function')try{await window.hfRefreshSharedData()}catch(e){}
+
     if(typeof window.enterApp==='function')await window.enterApp();
-    if(member.mustChangePassword||member.must_change_password){
+
+    if(mappedUser.mustChangePassword){
       if(typeof window.showForcedPasswordChange==='function')window.showForcedPasswordChange();
       else if(typeof window.showRequiredPasswordChange==='function')window.showRequiredPasswordChange();
     }
@@ -88,6 +103,12 @@ async function restore(){
     if(typeof window.setLoginLoading==='function')window.setLoginLoading(false);
   }
 }
-async function boot(){install();await restore()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+
+async function boot(){
+  install();
+  await restore();
+}
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+else boot();
 })();
