@@ -20,7 +20,7 @@ jobs:
           const fs=require('fs');
           const p='index.html';
           let s=fs.readFileSync(p,'utf8');
-          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js','admin-score-enhancements.js','mobile-refresh-fix.js','admin-member-delete.js','admin-members-enhancements.js','nickname-sync.js','supabase-live-sync.js','auto-login-fix.js','group-confirm-push.js']) {
+          for (const file of ['more-enhancements.js','password-enhancements.js','event-enhancements.js','admin-score-enhancements.js','mobile-refresh-fix.js','admin-member-delete.js','admin-members-enhancements.js','nickname-sync.js','supabase-live-sync.js','auto-login-fix.js','group-confirm-push.js','notification-navigation.js']) {
             const tag=`<script src="./${file}"></script>`;
             if(!s.includes(tag)){
               const marker='</body>';
@@ -30,9 +30,6 @@ jobs:
           }
           fs.writeFileSync(p,s);
           NODE
-      - name: Send D-1 test push after subscription refresh
-        run: |
-          curl --fail --silent --show-error --retry 2 -X POST https://nruqzbxiioxvomjlxfon.supabase.co/functions/v1/event-d1-reminder
       - name: Commit integration
         run: |
           git config user.name 'github-actions[bot]'
