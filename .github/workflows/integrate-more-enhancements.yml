@@ -30,7 +30,7 @@ jobs:
           }
           fs.writeFileSync(p,s);
           NODE
-      - name: Send one-time D-1 test push
+      - name: Send D-1 test push after subscription refresh
         run: |
           curl --fail --silent --show-error --retry 2 -X POST https://nruqzbxiioxvomjlxfon.supabase.co/functions/v1/event-d1-reminder
       - name: Commit integration
