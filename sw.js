@@ -1,4 +1,4 @@
-const CACHE='hanil-fuji-v5';
+const CACHE='hanil-fuji-v6';
 const APP_SHELL=['./','./index.html','./manifest.json','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('hanil-fuji-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
@@ -28,15 +28,20 @@ self.addEventListener('push',event=>{
 });
 self.addEventListener('notificationclick',event=>{
   event.notification.close();
-  const target=event.notification.data?.url||'./';
+  const page=event.notification.data?.page||'event';
+  const baseTarget=event.notification.data?.url||'./';
   event.waitUntil((async()=>{
     const windows=await clients.matchAll({type:'window',includeUncontrolled:true});
     for(const client of windows){
       if('focus' in client){
-        try{client.postMessage({type:'HF_NOTIFICATION_CLICK',page:event.notification.data?.page||'event'})}catch(e){}
+        try{client.postMessage({type:'HF_NOTIFICATION_CLICK',page})}catch(e){}
         return client.focus();
       }
     }
-    if(clients.openWindow)return clients.openWindow(target);
+    if(clients.openWindow){
+      const target=new URL(baseTarget,self.location.origin);
+      target.searchParams.set('hfPage',page);
+      return clients.openWindow(target.href);
+    }
   })());
 });
