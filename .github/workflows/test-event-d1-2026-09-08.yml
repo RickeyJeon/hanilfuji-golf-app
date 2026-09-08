@@ -1,0 +1,22 @@
+name: One-time D-1 test 2026-09-08 11:30 KST
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-once:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger only on 2026-09-08 KST
+        run: |
+          set -euo pipefail
+          KST_DATE=$(TZ=Asia/Seoul date +%F)
+          if [ "$KST_DATE" != "2026-09-08" ]; then
+            echo "One-time test date passed; skipping."
+            exit 0
+          fi
+          curl --fail --silent --show-error --retry 2 \
+            -X POST \
+            https://nruqzbxiioxvomjlxfon.supabase.co/functions/v1/event-d1-reminder
