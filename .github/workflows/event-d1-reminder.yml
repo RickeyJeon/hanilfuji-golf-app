@@ -2,7 +2,8 @@ name: Event D-1 reminder
 
 on:
   schedule:
-    - cron: '5 0 * * *'
+    # 09:00 KST (00:00 UTC)
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
