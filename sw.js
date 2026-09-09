@@ -1,5 +1,5 @@
-const CACHE='hanil-fuji-v6';
-const APP_SHELL=['./','./index.html','./manifest.json','./icon.svg'];
+const CACHE='hanil-fuji-v7';
+const APP_SHELL=['./','./index.html','./manifest.json','./icon.svg','./notification-badge.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('hanil-fuji-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',event=>{
@@ -19,7 +19,7 @@ self.addEventListener('push',event=>{
   const options={
     body:payload.body||'새로운 소식이 있습니다.',
     icon:payload.icon||'./icon.svg',
-    badge:payload.badge||'./icon.svg',
+    badge:'./notification-badge.svg',
     tag:payload.tag||('hf-'+Date.now()),
     renotify:!!payload.renotify,
     data:{url:payload.url||'./',page:payload.page||'event'}
