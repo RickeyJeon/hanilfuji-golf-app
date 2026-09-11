@@ -33,7 +33,6 @@ async function persistLatestScoreEvent(pair){
       member_id:dbMemberId,
       gross_score:Number(row.grossScore??row.score),
       handicap_adjustment:Number(row.handicap||0),
-      net_score:Number(row.adjusted??((row.grossScore??row.score)+(Number(row.handicap)||0))),
       rank_position:Number(row.rank||0)||null,
       points_awarded:Number(row.total||0),
       created_by_member_id:window.currentUser.dbId
