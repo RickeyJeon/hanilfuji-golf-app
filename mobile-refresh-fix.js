@@ -18,8 +18,21 @@ document.body.appendChild(indicator);
 let startY=0,dragging=false,busy=false;
 const text=indicator.querySelector('.hf-pull-text');
 const icon=indicator.querySelector('.hf-pull-icon');
-const canPull=()=>!busy&&window.scrollY<=2&&['home','event'].includes(window.currentPage||'home')&&!document.querySelector('.overlay:not(.hidden)');
+const canPull=()=>!busy&&window.scrollY<=2&&!document.querySelector('.overlay:not(.hidden)');
 const ignoredTarget=target=>!!target?.closest?.('input,textarea,select,button,a');
+
+window.hfRefreshSharedData=async function(){
+  const jobs=[];
+  if(typeof window.syncClubNotices==='function')jobs.push(window.syncClubNotices());
+  if(typeof window.loadSupabaseClubEvents==='function')jobs.push(window.loadSupabaseClubEvents());
+  if(typeof window.hfLoadSupabaseEventGroups==='function')jobs.push(window.hfLoadSupabaseEventGroups());
+  if(typeof window.loadSupabaseScoreEvents==='function')jobs.push(window.loadSupabaseScoreEvents());
+  const results=await Promise.allSettled(jobs);
+  const failed=results.filter(r=>r.status==='rejected');
+  if(typeof window.render==='function'&&window.currentPage)window.render(window.currentPage);
+  if(failed.length)throw failed[0].reason||new Error('일부 데이터를 새로고침하지 못했습니다.');
+  return true;
+};
 
 function reset(){
   dragging=false;
@@ -58,13 +71,15 @@ document.addEventListener('touchend',async event=>{
   if(text)text.textContent='새로고침 중...';
   if(icon)icon.textContent='↻';
   try{
-    if(typeof window.hfRefreshSharedData==='function')await window.hfRefreshSharedData();
-  }catch(error){
-    console.warn('[HANIL-FUJI] pull refresh failed',error);
-  }finally{
-    busy=false;
+    await window.hfRefreshSharedData();
     if(text)text.textContent='새로고침 완료';
     if(icon)icon.textContent='✓';
+  }catch(error){
+    console.warn('[HANIL-FUJI] pull refresh failed',error);
+    if(text)text.textContent='새로고침 실패';
+    if(icon)icon.textContent='!';
+  }finally{
+    busy=false;
     setTimeout(reset,650);
   }
 },{passive:true});
