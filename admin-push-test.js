@@ -8,7 +8,7 @@
     try{
       if(!('Notification' in window)){alert('이 기기는 웹 알림을 지원하지 않습니다.');return}
       if(Notification.permission!=='granted'){alert('알림 권한이 허용되지 않았습니다. 앱 알림 설정을 먼저 확인해 주세요.');return}
-      const {data,error}=await window.hfSupabase.functions.invoke('send-push',{body:{
+      const {data,error}=await hfSupabase.functions.invoke('send-push',{body:{
         notification_type:'event',test_only:true,title:'⛳ HANIL-FUJI 알림 테스트',
         body:'관리자 휴대폰 푸시 수신 확인용 테스트입니다.'
       }});
