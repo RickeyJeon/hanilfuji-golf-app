@@ -28,6 +28,8 @@
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.hfAdminTestPush()}};
     sheet.appendChild(el);
   }
-  const original=window.adminMenu;
+  const watcher=new MutationObserver(()=>{if(document.querySelector('#sheet .list-menu')&&!document.getElementById('hf-admin-push-test'))inject()});
+  watcher.observe(document.getElementById('sheet')||document.body,{childList:true,subtree:true});
+    const original=window.adminMenu;
   if(typeof original==='function')window.adminMenu=function(){const r=original.apply(this,arguments);setTimeout(inject,50);return r};
 })();
