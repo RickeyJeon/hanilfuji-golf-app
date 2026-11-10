@@ -49,7 +49,7 @@ const original=window.renderEventGroups;
 if(typeof original==='function')window.renderEventGroups=function(){
  let html=original.apply(this,arguments);
  if(!admin())return html;
- const id=window.groupEventId||getClubEvents()?.[0]?.id;
+ const id=typeof groupEventId!=='undefined'?groupEventId:null;
  html=html.replace('<button disabled title="추후 추가">직접 편성</button>','<button class="active" onclick="hfOpenManualGroups(\''+safe(id)+'\')">직접 편성</button>');
  if(!html.includes('hfOpenManualGroups(')){
   html=html.replace('<div class="group-summary">','<div style="margin:10px 0"><button class="btn secondary full" onclick="hfOpenManualGroups(\''+safe(id)+'\')">✎ 직접 조편성</button></div><div class="group-summary">');
