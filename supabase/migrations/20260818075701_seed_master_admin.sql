@@ -6,7 +6,7 @@ insert into public.club_members (
 )
 values (
   'Master Admin',
-  '01090010000',
+  '01090000020',
   'primary_admin',
   'active'
 )
