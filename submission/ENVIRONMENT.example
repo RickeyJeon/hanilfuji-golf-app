@@ -1,0 +1,8 @@
+# 제출용 환경변수 이름 예시. 실제 값을 입력하거나 회사 공유폴더에 올리지 마세요.
+SUPABASE_URL=https://YOUR_TEST_PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY=YOUR_TEST_PROJECT_PUBLISHABLE_KEY
+SUPABASE_SERVICE_ROLE_KEY=SET_IN_PRIVATE_EDGE_FUNCTION_SECRETS_ONLY
+VAPID_SUBJECT=mailto:admin@example.invalid
+VAPID_PUBLIC_KEY=YOUR_TEST_VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY=SET_IN_PRIVATE_EDGE_FUNCTION_SECRETS_ONLY
+# Reminder functions may also require their own invocation auth and scheduler configuration.
