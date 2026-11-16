@@ -39,7 +39,7 @@ The current schema now includes:
 - yearly membership fee status
 - public signup requests with admin approval flow
 - RLS policies and safe read views
-- seeded master admin phone: `01035504581`
+- seeded master admin phone: `01090010000`
 
 ## Immediate next step
 
