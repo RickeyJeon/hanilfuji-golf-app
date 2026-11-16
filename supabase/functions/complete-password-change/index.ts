@@ -1,0 +1,21 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
+const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
+Deno.serve(async req=>{
+  if(req.method==='OPTIONS') return new Response('ok',{headers:cors});
+  if(req.method!=='POST') return json({error:'POST required'},405);
+  const service=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{autoRefreshToken:false,persistSession:false}});
+  const token=(req.headers.get('Authorization')??'').replace(/^Bearer\s+/i,'');
+  if(!token)return json({error:'Unauthorized'},401);
+  const{data:au,error:ae}=await service.auth.getUser(token);if(ae||!au.user)return json({error:'Unauthorized'},401);
+  const body=await req.json().catch(()=>({}));const password=String(body?.password??'');
+  if(password.length<8)return json({error:'비밀번호는 8자 이상이어야 합니다.'},400);
+  const{data:member,error:me}=await service.from('club_members').select('id,auth_user_id,must_change_password,status').eq('auth_user_id',au.user.id).maybeSingle();
+  if(me||!member||member.status!=='active')return json({error:'회원 정보를 확인할 수 없습니다.'},403);
+  const{error:pe}=await service.auth.admin.updateUserById(au.user.id,{password});
+  if(pe)return json({error:`Auth 비밀번호 변경 실패: ${pe.message}`},500);
+  const{error:fe}=await service.from('club_members').update({must_change_password:false,updated_at:new Date().toISOString()}).eq('id',member.id).eq('auth_user_id',au.user.id);
+  if(fe)return json({error:`비밀번호는 변경됐지만 회원 상태 업데이트에 실패했습니다: ${fe.message}`},500);
+  return json({ok:true});
+});
