@@ -58,3 +58,13 @@ Supabase에서 운영 중인 Edge Function은 10개입니다.
 소스 ZIP 외에, 실제 앱 화면이 들어간 사용 매뉴얼 PDF, 시연 영상,
 본부장 확인서(활용 인원·운영 기간·시간 절감 근거·정착 여부)를 별도 제출하세요.
 이 브랜치에 추가한 파일은 **소스 추출 자료**이며 사용 매뉴얼/본부장 확인서를 대신하지 않습니다.
+
+## 6. 2026-11-16 제출용 정적 점검 및 운영 DB 진단
+
+- 원본 GitHub ZIP: 별도 JavaScript 파일 17개 및 HTML 내부 스크립트 9개를 Node.js 문법 검사하여 오류 없음. **실제 브라우저·Supabase 연동 통합 테스트를 뜻하지 않음.**
+- SPA 제출 브랜치의 `index.html`, `hanil_fuji_mobile_ui_v27.html`에 들어 있던 초기 명단 26명과 중복 제외 연락처 27종을 **샘플 이름·가상 번호로 치환**. 과거 마이그레이션 및 안내 파일의 고정 연락처도 치환.
+- **추가 수동 검토가 필요함:** 직원 이름이 다른 텍스트/주석에 남아 있는지, 실제 업무 부서·직위가 개인을 재식별하게 만들 수 있는지, 이전의 예시 스냅샷/이력 파일, 계정 식별정보 및 운영 프로젝트 URL/공개키 등.
+- 운영 Supabase Security Advisor 확인 결과: `member_score_directory`의 SECURITY DEFINER VIEW 1건(ERROR), 익명으로 실행 가능한 SECURITY DEFINER DB 함수 7개(WARN), 로그인 사용자 실행 가능 함수 10개(WARN), search_path 미지정 1건(WARN), 유출 비밀번호 보호 미설정 1건(WARN), RLS만 있고 정책이 없는 로그 테이블 1건(INFO).
+- 이 경고들은 **운영 시스템 자체에 관한 진단**이며 이번 소스 추출에서 발생한 것은 아님. 실제 악용 가능성은 각 함수의 내부 권한 검증 확인 후 판단해야 함. 운영 DB 권한과 설정은 **변경하지 않았음**.
+- 보안 경고 참고: https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view
+- 사용자에게 최종 전달하기 전 추가 비식별화 및 테스트 프로젝트 실행 검증 권장. ZIP을 전체 실행 검증 완료본이라고 표시하지 마세요.
