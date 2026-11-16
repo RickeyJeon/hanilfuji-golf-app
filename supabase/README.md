@@ -32,7 +32,7 @@ Current operational notes:
 - Public users can create signup requests in `public.signup_requests`
 - Admin approval updates `signup_requests.status` to `approved`
 - Approval trigger automatically creates or updates the matching `public.club_members` row
-- Seeded highest-privilege admin phone: `01035504581`
+- Seeded highest-privilege admin phone: `01090010000`
 
 Recommended next commands:
 1. `supabase login`
