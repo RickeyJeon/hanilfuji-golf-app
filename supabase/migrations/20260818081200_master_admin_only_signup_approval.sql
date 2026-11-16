@@ -9,7 +9,7 @@ as $$
     select 1
     from public.club_members member_row
     where member_row.auth_user_id = auth.uid()
-      and member_row.phone_e164 = '01035504581'
+      and member_row.phone_e164 = '01090010000'
       and member_row.role = 'primary_admin'
       and member_row.status = 'active'
   );
