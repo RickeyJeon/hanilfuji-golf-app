@@ -6,7 +6,7 @@ insert into public.club_members (
 )
 values (
   'Master Admin',
-  '01035504581',
+  '01090010000',
   'primary_admin',
   'active'
 )
@@ -19,5 +19,5 @@ set
 insert into public.member_settings (member_id)
 select id
 from public.club_members
-where phone_e164 = '01035504581'
+where phone_e164 = '01090010001'
 on conflict (member_id) do nothing;
